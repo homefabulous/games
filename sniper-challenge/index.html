@@ -1,0 +1,778 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Precision Sniper Challenge</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #111;
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="%23222"/><path d="M0 0h400v400H0zM0 0l400 400M400 0L0 400" stroke="%23333" stroke-width="1"/></svg>');
+            background-size: 200px 200px;
+            cursor: crosshair;
+        }
+        
+        #scope {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border: 2px solid red;
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+        }
+        
+        #scope::before, #scope::after {
+            content: '';
+            position: absolute;
+            background-color: red;
+        }
+        
+        #scope::before {
+            width: 2px;
+            height: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        #scope::after {
+            width: 100%;
+            height: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        .target {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><circle cx="30" cy="30" r="30" fill="%23d00"/><circle cx="30" cy="30" r="20" fill="%23f00"/><circle cx="30" cy="30" r="10" fill="%23fff"/><circle cx="30" cy="30" r="5" fill="%23f00"/></svg>');
+            background-size: contain;
+            transform: translate(-50%, -50%);
+            transition: transform 0.1s;
+            z-index: 5;
+        }
+        
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 20;
+        }
+        
+        #hud div {
+            margin: 5px 0;
+            font-size: 18px;
+        }
+        
+        #ammo {
+            color: #ff0;
+        }
+        
+        #score {
+            color: #0f0;
+        }
+        
+        #time {
+            color: #0af;
+        }
+        
+        #wind-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 20;
+            font-size: 18px;
+        }
+        
+        #wind-arrow {
+            display: inline-block;
+            transition: transform 0.5s;
+        }
+        
+        #reticle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: rgba(255, 0, 0, 0.5);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 9;
+        }
+        
+        #bullet-hole {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="%23000"/><circle cx="10" cy="10" r="5" fill="%23333"/></svg>');
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 8;
+            display: none;
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 30;
+        }
+        
+        #start-screen h1 {
+            font-size: 48px;
+            margin-bottom: 30px;
+            color: #f00;
+            text-shadow: 0 0 10px #000;
+        }
+        
+        #start-screen p {
+            font-size: 20px;
+            margin-bottom: 20px;
+            max-width: 600px;
+            text-align: center;
+        }
+        
+        #start-screen button {
+            padding: 15px 30px;
+            font-size: 24px;
+            background-color: #d00;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 30px;
+            transition: all 0.3s;
+        }
+        
+        #start-screen button:hover {
+            background-color: #f00;
+            transform: scale(1.05);
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 30;
+            display: none;
+        }
+        
+        #game-over h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #f00;
+        }
+        
+        #game-over div {
+            font-size: 24px;
+            margin: 10px 0;
+        }
+        
+        #game-over button {
+            padding: 15px 30px;
+            font-size: 24px;
+            background-color: #d00;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 30px;
+            transition: all 0.3s;
+        }
+        
+        #game-over button:hover {
+            background-color: #f00;
+            transform: scale(1.05);
+        }
+        
+        #breath-meter {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            overflow: hidden;
+            z-index: 20;
+        }
+        
+        #breath-fill {
+            height: 100%;
+            width: 100%;
+            background-color: #0af;
+            transition: width 0.1s;
+        }
+        
+        #reload-indicator {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 18px;
+            z-index: 20;
+            display: none;
+        }
+        
+        .hit-marker {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><path d="M0 15h30M15 0v30" stroke="%23f00" stroke-width="3"/></svg>');
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 7;
+            animation: fadeOut 1s forwards;
+        }
+        
+        @keyframes fadeOut {
+            to { opacity: 0; }
+        }
+        
+        #zoom-level {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 18px;
+            z-index: 20;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="scope"></div>
+        <div id="reticle"></div>
+        <div id="bullet-hole"></div>
+        
+        <div id="hud">
+            <div id="ammo"><i class="fas fa-bullseye"></i> Ammo: <span id="ammo-count">10</span>/10</div>
+            <div id="score"><i class="fas fa-star"></i> Score: <span id="score-count">0</span></div>
+            <div id="time"><i class="fas fa-clock"></i> Time: <span id="time-count">60</span>s</div>
+        </div>
+        
+        <div id="wind-indicator">
+            <i class="fas fa-wind"></i> Wind: <span id="wind-speed">0</span> m/s 
+            <span id="wind-arrow">→</span>
+        </div>
+        
+        <div id="breath-meter">
+            <div id="breath-fill"></div>
+        </div>
+        
+        <div id="reload-indicator">
+            <i class="fas fa-sync-alt"></i> Reloading...
+        </div>
+        
+        <div id="zoom-level">
+            Zoom: <span id="zoom-value">1</span>x
+        </div>
+        
+        <div id="start-screen">
+            <h1>PRECISION SNIPER CHALLENGE</h1>
+            <p>Test your marksmanship skills in this realistic sniper simulation.</p>
+            <p>Hold SHIFT to steady your aim and SPACE to hold your breath.</p>
+            <p>Press R to reload and mouse wheel to zoom.</p>
+            <p>Account for wind direction and speed when taking your shots.</p>
+            <button id="start-button">START MISSION</button>
+        </div>
+        
+        <div id="game-over">
+            <h1>MISSION COMPLETE</h1>
+            <div>Targets hit: <span id="final-score">0</span>/<span id="total-targets">0</span></div>
+            <div>Accuracy: <span id="accuracy">0</span>%</div>
+            <div>Time remaining: <span id="time-remaining">0</span>s</div>
+            <button id="restart-button">TRY AGAIN</button>
+        </div>
+    </div>
+
+    <script>
+        // Game variables
+        let gameRunning = false;
+        let score = 0;
+        let ammo = 10;
+        let maxAmmo = 10;
+        let timeLeft = 60;
+        let targets = [];
+        let targetCount = 0;
+        let hits = 0;
+        let shotsFired = 0;
+        let windSpeed = 0;
+        let windDirection = 0; // degrees (0 = right, 90 = up, etc.)
+        let mouseX = 0;
+        let mouseY = 0;
+        let scopeX = 0;
+        let scopeY = 0;
+        let breath = 100;
+        let breathHeld = false;
+        let breathTimer = null;
+        let reloading = false;
+        let zoomLevel = 1;
+        let gameTimer = null;
+        let targetTimer = null;
+        let windTimer = null;
+        let breathRecoveryTimer = null;
+        
+        // DOM elements
+        const gameContainer = document.getElementById('game-container');
+        const scope = document.getElementById('scope');
+        const reticle = document.getElementById('reticle');
+        const bulletHole = document.getElementById('bullet-hole');
+        const ammoCount = document.getElementById('ammo-count');
+        const scoreCount = document.getElementById('score-count');
+        const timeCount = document.getElementById('time-count');
+        const windSpeedDisplay = document.getElementById('wind-speed');
+        const windArrow = document.getElementById('wind-arrow');
+        const breathFill = document.getElementById('breath-fill');
+        const reloadIndicator = document.getElementById('reload-indicator');
+        const zoomValue = document.getElementById('zoom-value');
+        const startScreen = document.getElementById('start-screen');
+        const startButton = document.getElementById('start-button');
+        const gameOverScreen = document.getElementById('game-over');
+        const finalScore = document.getElementById('final-score');
+        const totalTargets = document.getElementById('total-targets');
+        const accuracy = document.getElementById('accuracy');
+        const timeRemaining = document.getElementById('time-remaining');
+        const restartButton = document.getElementById('restart-button');
+        
+        // Event listeners
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', startGame);
+        
+        gameContainer.addEventListener('mousemove', handleMouseMove);
+        gameContainer.addEventListener('click', handleShoot);
+        document.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('keyup', handleKeyUp);
+        document.addEventListener('wheel', handleWheel);
+        
+        // Game functions
+        function startGame() {
+            // Reset game state
+            gameRunning = true;
+            score = 0;
+            ammo = maxAmmo;
+            timeLeft = 60;
+            targetCount = 0;
+            hits = 0;
+            shotsFired = 0;
+            zoomLevel = 1;
+            breath = 100;
+            breathHeld = false;
+            reloading = false;
+            
+            // Clear existing targets
+            clearTargets();
+            
+            // Clear timers
+            if (gameTimer) clearInterval(gameTimer);
+            if (targetTimer) clearInterval(targetTimer);
+            if (windTimer) clearInterval(windTimer);
+            if (breathRecoveryTimer) clearInterval(breathRecoveryTimer);
+            
+            // Update UI
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            reloadIndicator.style.display = 'none';
+            updateHUD();
+            updateZoom();
+            
+            // Set initial wind
+            updateWind();
+            
+            // Start timers
+            gameTimer = setInterval(updateGameTime, 1000);
+            targetTimer = setInterval(createTarget, 1500);
+            windTimer = setInterval(updateWind, 10000);
+            breathRecoveryTimer = setInterval(recoverBreath, 100);
+        }
+        
+        function updateHUD() {
+            ammoCount.textContent = ammo;
+            scoreCount.textContent = score;
+            timeCount.textContent = timeLeft;
+            breathFill.style.width = `${breath}%`;
+        }
+        
+        function updateWind() {
+            // Random wind speed (0-15 m/s)
+            windSpeed = Math.floor(Math.random() * 16);
+            
+            // Random wind direction (0-359 degrees)
+            windDirection = Math.floor(Math.random() * 360);
+            
+            // Update display
+            windSpeedDisplay.textContent = windSpeed;
+            
+            // Update wind arrow direction
+            const arrowMap = {
+                0: '→',    // right
+                45: '↗',   // up-right
+                90: '↑',   // up
+                135: '↖',  // up-left
+                180: '←',  // left
+                225: '↙',  // down-left
+                270: '↓',  // down
+                315: '↘',  // down-right
+            };
+            
+            // Find closest cardinal direction for arrow
+            const closestDir = Math.round(windDirection / 45) * 45 % 360;
+            windArrow.textContent = arrowMap[closestDir] || '→';
+            windArrow.style.transform = `rotate(${windDirection}deg)`;
+        }
+        
+        function createTarget() {
+            if (!gameRunning) return;
+            
+            const target = document.createElement('div');
+            target.className = 'target';
+            
+            // Random position (but not too close to edges)
+            const x = 100 + Math.random() * (window.innerWidth - 200);
+            const y = 100 + Math.random() * (window.innerHeight - 200);
+            
+            target.style.left = `${x}px`;
+            target.style.top = `${y}px`;
+            
+            // Random size (50-100px)
+            const size = 50 + Math.random() * 50;
+            target.style.width = `${size}px`;
+            target.style.height = `${size}px`;
+            
+            // Random movement
+            const moveX = (Math.random() - 0.5) * 2;
+            const moveY = (Math.random() - 0.5) * 2;
+            
+            // Add to game
+            gameContainer.appendChild(target);
+            targets.push({
+                element: target,
+                x: x,
+                y: y,
+                moveX: moveX,
+                moveY: moveY,
+                size: size
+            });
+            
+            targetCount++;
+        }
+        
+        function clearTargets() {
+            targets.forEach(target => {
+                if (target.element.parentNode) {
+                    gameContainer.removeChild(target.element);
+                }
+            });
+            targets = [];
+        }
+        
+        function updateGameTime() {
+            if (!gameRunning) return;
+            
+            timeLeft--;
+            timeCount.textContent = timeLeft;
+            
+            if (timeLeft <= 0) {
+                endGame();
+            }
+        }
+        
+        function handleMouseMove(e) {
+            if (!gameRunning) return;
+            
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            
+            // Update scope position
+            scope.style.left = `${mouseX}px`;
+            scope.style.top = `${mouseY}px`;
+            
+            // Update reticle position with slight delay (simulating human reaction time)
+            setTimeout(() => {
+                reticle.style.left = `${mouseX}px`;
+                reticle.style.top = `${mouseY}px`;
+            }, 50);
+        }
+        
+        function handleShoot() {
+            if (!gameRunning || reloading || ammo <= 0) return;
+            
+            // Decrease ammo
+            ammo--;
+            shotsFired++;
+            updateHUD();
+            
+            // Show bullet hole at reticle position
+            bulletHole.style.left = `${reticle.offsetLeft}px`;
+            bulletHole.style.top = `${reticle.offsetTop}px`;
+            bulletHole.style.display = 'block';
+            setTimeout(() => {
+                bulletHole.style.display = 'none';
+            }, 300);
+            
+            // Check for hits
+            checkHit();
+            
+            // Auto reload when empty
+            if (ammo <= 0) {
+                startReload();
+            }
+        }
+        
+        function checkHit() {
+            const reticleRect = reticle.getBoundingClientRect();
+            const reticleX = reticleRect.left + reticleRect.width / 2;
+            const reticleY = reticleRect.top + reticleRect.height / 2;
+            
+            // Calculate accuracy penalty from wind (more effect at higher zoom)
+            const windEffect = windSpeed * (zoomLevel / 2);
+            const windX = Math.cos(windDirection * Math.PI / 180) * windEffect;
+            const windY = -Math.sin(windDirection * Math.PI / 180) * windEffect;
+            
+            // Calculate accuracy bonus from breath control
+            const breathBonus = breathHeld ? breath / 100 : 0.5;
+            
+            // Calculate final shot position with all modifiers
+            const shotX = reticleX + (Math.random() - 0.5) * 20 * (1 - breathBonus) + windX;
+            const shotY = reticleY + (Math.random() - 0.5) * 20 * (1 - breathBonus) + windY;
+            
+            // Check each target
+            for (let i = 0; i < targets.length; i++) {
+                const target = targets[i];
+                const targetRect = target.element.getBoundingClientRect();
+                
+                if (
+                    shotX > targetRect.left && 
+                    shotX < targetRect.right && 
+                    shotY > targetRect.top && 
+                    shotY < targetRect.bottom
+                ) {
+                    // Hit!
+                    hits++;
+                    
+                    // Score based on target size and distance
+                    const distance = Math.sqrt(
+                        Math.pow(shotX - (targetRect.left + targetRect.width / 2), 2) + 
+                        Math.pow(shotY - (targetRect.top + targetRect.height / 2), 2)
+                    );
+                    
+                    const sizeFactor = 1 - (target.size - 50) / 50; // 50px = 1.0, 100px = 0.0
+                    const distanceFactor = 1 - Math.min(distance / 100, 0.9);
+                    const points = Math.floor(10 * sizeFactor * distanceFactor * zoomLevel);
+                    
+                    score += points;
+                    
+                    // Show hit marker
+                    const hitMarker = document.createElement('div');
+                    hitMarker.className = 'hit-marker';
+                    hitMarker.style.left = `${shotX}px`;
+                    hitMarker.style.top = `${shotY}px`;
+                    gameContainer.appendChild(hitMarker);
+                    
+                    // Remove target
+                    gameContainer.removeChild(target.element);
+                    targets.splice(i, 1);
+                    
+                    // Update HUD
+                    updateHUD();
+                    
+                    return;
+                }
+            }
+        }
+        
+        function handleKeyDown(e) {
+            if (!gameRunning) return;
+            
+            switch (e.key) {
+                case ' ':
+                    // Space to hold breath
+                    if (breath > 10 && !breathHeld) {
+                        breathHeld = true;
+                        if (breathTimer) clearInterval(breathTimer);
+                        breathTimer = setInterval(() => {
+                            breath -= 0.5;
+                            breathFill.style.width = `${breath}%`;
+                            if (breath <= 0) {
+                                breathHeld = false;
+                                clearInterval(breathTimer);
+                            }
+                        }, 50);
+                    }
+                    break;
+                case 'r':
+                    // R to reload
+                    if (ammo < maxAmmo && !reloading) {
+                        startReload();
+                    }
+                    break;
+                case 'Shift':
+                    // Shift to steady aim (reduces reticle movement delay)
+                    reticle.style.transition = 'left 0.05s, top 0.05s';
+                    break;
+            }
+        }
+        
+        function handleKeyUp(e) {
+            if (!gameRunning) return;
+            
+            switch (e.key) {
+                case ' ':
+                    // Release breath
+                    breathHeld = false;
+                    if (breathTimer) clearInterval(breathTimer);
+                    break;
+                case 'Shift':
+                    // Return to normal aim
+                    reticle.style.transition = 'left 0.1s, top 0.1s';
+                    break;
+            }
+        }
+        
+        function handleWheel(e) {
+            if (!gameRunning) return;
+            
+            // Adjust zoom level
+            if (e.deltaY < 0) {
+                // Zoom in
+                zoomLevel = Math.min(zoomLevel + 0.5, 4);
+            } else {
+                // Zoom out
+                zoomLevel = Math.max(zoomLevel - 0.5, 1);
+            }
+            
+            updateZoom();
+        }
+        
+        function updateZoom() {
+            // Adjust scope size based on zoom
+            const scopeSize = 100 / zoomLevel;
+            scope.style.width = `${scopeSize}px`;
+            scope.style.height = `${scopeSize}px`;
+            
+            // Update zoom display
+            zoomValue.textContent = zoomLevel;
+        }
+        
+        function startReload() {
+            if (reloading) return;
+            
+            reloading = true;
+            reloadIndicator.style.display = 'block';
+            
+            // Reload takes 2 seconds
+            setTimeout(() => {
+                ammo = maxAmmo;
+                reloading = false;
+                reloadIndicator.style.display = 'none';
+                updateHUD();
+            }, 2000);
+        }
+        
+        function recoverBreath() {
+            if (!breathHeld && breath < 100) {
+                breath = Math.min(breath + 0.2, 100);
+                breathFill.style.width = `${breath}%`;
+            }
+        }
+        
+        function endGame() {
+            gameRunning = false;
+            clearInterval(gameTimer);
+            clearInterval(targetTimer);
+            clearInterval(windTimer);
+            clearInterval(breathRecoveryTimer);
+            
+            // Calculate accuracy
+            const accuracyPercent = shotsFired > 0 ? Math.round((hits / shotsFired) * 100) : 0;
+            
+            // Update game over screen
+            finalScore.textContent = hits;
+            totalTargets.textContent = targetCount;
+            accuracy.textContent = accuracyPercent;
+            timeRemaining.textContent = timeLeft;
+            
+            // Show game over screen
+            gameOverScreen.style.display = 'flex';
+        }
+        
+        // Animation loop for moving targets
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            // Move targets
+            targets.forEach(target => {
+                // Update position
+                target.x += target.moveX;
+                target.y += target.moveY;
+                
+                // Bounce off edges
+                if (target.x < 50 || target.x > window.innerWidth - 50) {
+                    target.moveX *= -1;
+                }
+                if (target.y < 50 || target.y > window.innerHeight - 50) {
+                    target.moveY *= -1;
+                }
+                
+                // Apply to element
+                target.element.style.left = `${target.x}px`;
+                target.element.style.top = `${target.y}px`;
+            });
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Start the animation loop
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
