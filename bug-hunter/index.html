@@ -1,0 +1,959 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bug Hunter Quest</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .game-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background-color: #1e1e1e;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 255, 100, 0.1);
+            overflow: hidden;
+        }
+        
+        .maze {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background-color: #1e1e1e;
+            background-image: 
+                linear-gradient(#333333 1px, transparent 1px),
+                linear-gradient(90deg, #333333 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        .wall {
+            position: absolute;
+            background-color: #2a5a7a;
+            border-radius: 3px;
+        }
+        
+        .bug {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            background-color: #ff5555;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            color: white;
+        }
+        
+        .qa-engineer {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: #4fc3f7;
+            border-radius: 50%;
+            z-index: 10;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: white;
+        }
+        
+        .qa-engineer::before {
+            content: '👨‍💻';
+            position: absolute;
+            font-size: 14px;
+        }
+        
+        .ghost {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50% 50% 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+        
+        .ghost::before {
+            position: absolute;
+        }
+        
+        #ghost1 {
+            background-color: #ff4081;
+        }
+        #ghost1::before {
+            content: '👾';
+        }
+        
+        #ghost2 {
+            background-color: #ffeb3b;
+        }
+        #ghost2::before {
+            content: '🐛';
+        }
+        
+        #ghost3 {
+            background-color: #9c27b0;
+        }
+        #ghost3::before {
+            content: '💀';
+        }
+        
+        .score-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 8px 12px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            z-index: 20;
+        }
+        
+        .score-panel i {
+            margin-right: 8px;
+            color: #4fc3f7;
+        }
+        
+        .lives {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 8px 12px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            z-index: 20;
+        }
+        
+        .lives i {
+            margin-left: 5px;
+            color: #ff4081;
+        }
+        
+        .game-over, .game-won, .game-start {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 30;
+        }
+        
+        .game-over h1 {
+            color: #ff4081;
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        
+        .game-won h1 {
+            color: #4fc3f7;
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        
+        .game-start h1 {
+            color: #4fc3f7;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .game-start p {
+            text-align: center;
+            max-width: 80%;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+        
+        button {
+            background-color: #4fc3f7;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background-color: #3ba6d6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .level-up {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #4fc3f7;
+            padding: 20px 40px;
+            border-radius: 10px;
+            font-size: 24px;
+            z-index: 25;
+            display: none;
+        }
+        
+        .power-up {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            background-color: #4caf50;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            color: white;
+            animation: pulse 1.5s infinite;
+            z-index: 5;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
+        
+        .tutorial {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 20;
+        }
+        
+        .tutorial i {
+            color: #ffeb3b;
+            margin-right: 5px;
+        }
+
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .control-key {
+            background-color: #333;
+            border-radius: 5px;
+            padding: 10px 15px;
+            font-size: 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 50px;
+        }
+
+        .control-key kbd {
+            font-family: inherit;
+            background-color: #555;
+            padding: 5px 10px;
+            border-radius: 4px;
+            margin-bottom: 5px;
+        }
+
+        .control-key span {
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .level-info {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 20;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="maze" id="maze"></div>
+        
+        <div class="score-panel">
+            <i class="fas fa-bug"></i>
+            <span id="score">0</span>
+        </div>
+        
+        <div class="level-info">
+            Level <span id="levelDisplay">1</span>
+        </div>
+        
+        <div class="lives">
+            <span>Lives:</span>
+            <i class="fas fa-heart"></i>
+            <i class="fas fa-heart"></i>
+            <i class="fas fa-heart"></i>
+        </div>
+        
+        <div class="game-over">
+            <h1>QA FAILED!</h1>
+            <p>Too many bugs escaped into production!</p>
+            <button id="retryButton">Retry Release</button>
+        </div>
+        
+        <div class="game-won">
+            <h1>QA SUCCESS!</h1>
+            <p>All bugs squashed before release!</p>
+            <button id="playAgainButton">Start New Sprint</button>
+        </div>
+        
+        <div class="game-start" id="gameStart">
+            <h1>BUG HUNTER QUEST</h1>
+            <p>As a QA Engineer, your mission is to squash all the bugs before they reach production!</p>
+            <p>Use arrow keys to move and collect the coffee power-ups to temporarily scare away the ghosts.</p>
+            
+            <div class="controls">
+                <div class="control-key">
+                    <kbd>↑</kbd>
+                    <span>Up</span>
+                </div>
+                <div class="control-key">
+                    <kbd>←</kbd>
+                    <span>Left</span>
+                </div>
+                <div class="control-key">
+                    <kbd>↓</kbd>
+                    <span>Down</span>
+                </div>
+                <div class="control-key">
+                    <kbd>→</kbd>
+                    <span>Right</span>
+                </div>
+            </div>
+            
+            <button id="startButton">Start Testing</button>
+        </div>
+        
+        <div class="level-up" id="levelUp">
+            LEVEL COMPLETED!
+        </div>
+        
+        <div class="tutorial">
+            <i class="fas fa-info-circle"></i>
+            Use arrow keys to move the QA engineer
+        </div>
+    </div>
+
+    <script>
+        // Game elements
+        const maze = document.getElementById('maze');
+        const scoreElement = document.getElementById('score');
+        const levelDisplay = document.getElementById('levelDisplay');
+        const livesElement = document.querySelector('.lives');
+        const gameOverScreen = document.querySelector('.game-over');
+        const gameWonScreen = document.querySelector('.game-won');
+        const gameStartScreen = document.getElementById('gameStart');
+        const levelUpScreen = document.getElementById('levelUp');
+        const startButton = document.getElementById('startButton');
+        const retryButton = document.getElementById('retryButton');
+        const playAgainButton = document.getElementById('playAgainButton');
+        
+        // Game variables
+        let score = 0;
+        let lives = 3;
+        let level = 1;
+        let bugsLeft = 0;
+        let bugs = [];
+        let walls = [];
+        let powerUps = [];
+        let ghosts = [];
+        
+        const qaEngineer = document.createElement('div');
+        qaEngineer.className = 'qa-engineer';
+        
+        // Movement variables
+        let direction = null;
+        let nextDirection = null;
+        
+        // Game state
+        let gameRunning = false;
+        let gameLoopId = null;
+        
+        // Wall layout for the maze
+        const wallLayout = [
+            // Horizontal walls
+            [0, 0, 800, 10],
+            [0, 590, 800, 10],
+            [0, 200, 300, 10],
+            [500, 200, 300, 10],
+            [0, 400, 300, 10],
+            [500, 400, 300, 10],
+            
+            // Vertical walls
+            [0, 0, 10, 600],
+            [790, 0, 10, 600],
+            [200, 100, 10, 200],
+            [200, 400, 10, 100],
+            [600, 100, 10, 200],
+            [600, 400, 10, 100],
+            
+            // Center blocks
+            [350, 250, 100, 10],
+            [350, 350, 100, 10]
+        ];
+        
+        // Event listeners for buttons
+        startButton.addEventListener('click', startGame);
+        retryButton.addEventListener('click', resetGame);
+        playAgainButton.addEventListener('click', resetGame);
+        
+        // Main game function
+        function startGame() {
+            gameStartScreen.style.display = 'none';
+            initGame();
+        }
+        
+        function initGame() {
+            // Clear any existing elements
+            while (maze.firstChild) {
+                maze.removeChild(maze.firstChild);
+            }
+            
+            // Reset game state
+            score = 0;
+            lives = 3;
+            level = 1;
+            direction = null;
+            nextDirection = null;
+            bugs = [];
+            walls = [];
+            ghosts = [];
+            powerUps = [];
+            
+            // Update display
+            scoreElement.textContent = score;
+            levelDisplay.textContent = level;
+            updateLivesDisplay();
+            
+            // Create game elements
+            createWalls();
+            createBugs();
+            createGhosts();
+            createPowerUps();
+            
+            // Position QA engineer
+            qaEngineer.style.left = '400px';
+            qaEngineer.style.top = '300px';
+            maze.appendChild(qaEngineer);
+            
+            // Start game loop
+            gameRunning = true;
+            if (gameLoopId) {
+                cancelAnimationFrame(gameLoopId);
+            }
+            gameLoopId = requestAnimationFrame(gameLoop);
+        }
+        
+        function createWalls() {
+            wallLayout.forEach(wall => {
+                const wallElement = document.createElement('div');
+                wallElement.className = 'wall';
+                wallElement.style.left = wall[0] + 'px';
+                wallElement.style.top = wall[1] + 'px';
+                wallElement.style.width = wall[2] + 'px';
+                wallElement.style.height = wall[3] + 'px';
+                
+                maze.appendChild(wallElement);
+                walls.push(wallElement);
+            });
+        }
+        
+        function createBugs() {
+            const bugCount = 10 + (level * 5);
+            bugsLeft = bugCount;
+            
+            for (let i = 0; i < bugCount; i++) {
+                const bugElement = document.createElement('div');
+                bugElement.className = 'bug';
+                bugElement.innerHTML = '<i class="fas fa-bug"></i>';
+                
+                // Position bug in valid area
+                const position = getValidPosition();
+                bugElement.style.left = position.x + 'px';
+                bugElement.style.top = position.y + 'px';
+                
+                maze.appendChild(bugElement);
+                bugs.push({
+                    element: bugElement,
+                    x: position.x,
+                    y: position.y
+                });
+            }
+        }
+        
+        function createGhosts() {
+            const ghostCount = Math.min(2 + Math.floor(level / 2), 5);
+            
+            for (let i = 0; i < ghostCount; i++) {
+                const ghostElement = document.createElement('div');
+                ghostElement.className = 'ghost';
+                ghostElement.id = `ghost${i+1}`;
+                
+                const positions = [
+                    { x: 100, y: 100 },
+                    { x: 700, y: 100 },
+                    { x: 100, y: 500 },
+                    { x: 700, y: 500 },
+                    { x: 400, y: 150 }
+                ];
+                
+                const pos = positions[i % positions.length];
+                ghostElement.style.left = pos.x + 'px';
+                ghostElement.style.top = pos.y + 'px';
+                
+                maze.appendChild(ghostElement);
+                ghosts.push({
+                    element: ghostElement,
+                    x: pos.x,
+                    y: pos.y,
+                    dx: Math.random() > 0.5 ? 2 : -2,
+                    dy: Math.random() > 0.5 ? 2 : -2
+                });
+            }
+        }
+        
+        function createPowerUps() {
+            const powerUpCount = Math.min(2 + Math.floor(level / 2), 4);
+            
+            for (let i = 0; i < powerUpCount; i++) {
+                const powerUpElement = document.createElement('div');
+                powerUpElement.className = 'power-up';
+                powerUpElement.innerHTML = '<i class="fas fa-mug-hot"></i>';
+                
+                // Position power up in valid area
+                const position = getValidPosition(true);
+                powerUpElement.style.left = position.x + 'px';
+                powerUpElement.style.top = position.y + 'px';
+                
+                maze.appendChild(powerUpElement);
+                powerUps.push({
+                    element: powerUpElement,
+                    x: position.x,
+                    y: position.y
+                });
+            }
+        }
+        
+        function getValidPosition(avoidBugs = false) {
+            let x, y;
+            let validPosition = false;
+            
+            while (!validPosition) {
+                x = Math.floor(Math.random() * 760) + 20;
+                y = Math.floor(Math.random() * 560) + 20;
+                
+                validPosition = true;
+                
+                // Check if position is on a wall
+                for (const wall of wallLayout) {
+                    if (x + 15 > wall[0] && x < wall[0] + wall[2] &&
+                        y + 15 > wall[1] && y < wall[1] + wall[3]) {
+                        validPosition = false;
+                        break;
+                    }
+                }
+                
+                // Don't spawn on QA engineer start position
+                if (x >= 380 && x <= 420 && y >= 280 && y <= 320) {
+                    validPosition = false;
+                }
+                
+                // If avoiding bugs, check distance to bugs
+                if (avoidBugs && validPosition) {
+                    for (const bug of bugs) {
+                        const dx = x - bug.x;
+                        const dy = y - bug.y;
+                        if (dx * dx + dy * dy < 400) {
+                            validPosition = false;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            return { x, y };
+        }
+        
+        function updateLivesDisplay() {
+            const heartIcons = livesElement.querySelectorAll('i');
+            heartIcons.forEach((heart, index) => {
+                if (index < lives) {
+                    heart.style.display = 'inline-block';
+                } else {
+                    heart.style.display = 'none';
+                }
+            });
+        }
+        
+        function moveGhosts() {
+            ghosts.forEach(ghost => {
+                // Simple AI: bounce around with occasional random direction changes
+                if (Math.random() < 0.02) {
+                    ghost.dx = Math.random() > 0.5 ? 2 : -2;
+                }
+                if (Math.random() < 0.02) {
+                    ghost.dy = Math.random() > 0.5 ? 2 : -2;
+                }
+                
+                // Check for wall collisions
+                const newX = ghost.x + ghost.dx;
+                const newY = ghost.y + ghost.dy;
+                
+                let hitWall = false;
+                
+                for (const wall of wallLayout) {
+                    // Check horizontal movement
+                    if (ghost.dx !== 0 && newX + 20 > wall[0] && newX < wall[0] + wall[2] &&
+                        ghost.y + 20 > wall[1] && ghost.y < wall[1] + wall[3]) {
+                        ghost.dx *= -1;
+                        hitWall = true;
+                    }
+                    
+                    // Check vertical movement
+                    if (ghost.dy !== 0 && ghost.x + 20 > wall[0] && ghost.x < wall[0] + wall[2] &&
+                        newY + 20 > wall[1] && newY < wall[1] + wall[3]) {
+                        ghost.dy *= -1;
+                        hitWall = true;
+                    }
+                    
+                    if (hitWall) break;
+                }
+                
+                // Update position if not hitting a wall
+                ghost.x += ghost.dx;
+                ghost.y += ghost.dy;
+                
+                // Bounce off screen edges
+                if (ghost.x < 10) ghost.dx = Math.abs(ghost.dx);
+                if (ghost.x > 770) ghost.dx = -Math.abs(ghost.dx);
+                if (ghost.y < 10) ghost.dy = Math.abs(ghost.dy);
+                if (ghost.y > 570) ghost.dy = -Math.abs(ghost.dy);
+                
+                ghost.element.style.left = ghost.x + 'px';
+                ghost.element.style.top = ghost.y + 'px';
+                
+                // Check collision with QA engineer
+                if (gameRunning) {
+                    const qaX = parseInt(qaEngineer.style.left);
+                    const qaY = parseInt(qaEngineer.style.top);
+                    
+                    const dx = qaX - ghost.x;
+                    const dy = qaY - ghost.y;
+                    const distance = dx * dx + dy * dy;
+                    
+                    if (distance < 20) {
+                        hitByGhost();
+                    }
+                }
+            });
+        }
+        
+        function moveQAEngineer() {
+            // Check user input
+            if (nextDirection !== null) {
+                const currentX = parseInt(qaEngineer.style.left);
+                const currentY = parseInt(qaEngineer.style.top);
+                let newX = currentX;
+                let newY = currentY;
+                const speed = 4;
+                
+                switch (nextDirection) {
+                    case 0: // Up
+                        newY -= speed;
+                        break;
+                    case 1: // Right
+                        newX += speed;
+                        break;
+                    case 2: // Down
+                        newY += speed;
+                        break;
+                    case 3: // Left
+                        newX -= speed;
+                        break;
+                }
+                
+                // Check if next position is valid (not in wall)
+                let canChange = true;
+                for (const wall of wallLayout) {
+                    if (newX + 20 > wall[0] && newX < wall[0] + wall[2] &&
+                        newY + 20 > wall[1] && newY < wall[1] + wall[3]) {
+                        canChange = false;
+                        break;
+                    }
+                }
+                
+                if (canChange) {
+                    direction = nextDirection;
+                    nextDirection = null;
+                }
+            }
+            
+            // Move in current direction
+            if (direction !== null) {
+                let newX = parseInt(qaEngineer.style.left);
+                let newY = parseInt(qaEngineer.style.top);
+                const speed = 4;
+                
+                switch (direction) {
+                    case 0: // Up
+                        newY -= speed;
+                        break;
+                    case 1: // Right
+                        newX += speed;
+                        break;
+                    case 2: // Down
+                        newY += speed;
+                        break;
+                    case 3: // Left
+                        newX -= speed;
+                        break;
+                }
+                
+                // Check for wall collisions
+                let hitWall = false;
+                for (const wall of wallLayout) {
+                    if (newX + 20 > wall[0] && newX < wall[0] + wall[2] &&
+                        newY + 20 > wall[1] && newY < wall[1] + wall[3]) {
+                        hitWall = true;
+                        break;
+                    }
+                }
+                
+                // Wrap around screen edges
+                if (newX < 0) newX = 780;
+                if (newX > 780) newX = 0;
+                if (newY < 0) newY = 580;
+                if (newY > 580) newY = 0;
+                
+                if (!hitWall) {
+                    qaEngineer.style.left = newX + 'px';
+                    qaEngineer.style.top = newY + 'px';
+                    
+                    // Check for collisions
+                    checkBugCollisions(newX, newY);
+                    checkPowerUpCollisions(newX, newY);
+                } else {
+                    // If hit a wall, stop movement
+                    direction = null;
+                }
+            }
+        }
+        
+        function checkBugCollisions(x, y) {
+            bugs.forEach((bug, index) => {
+                const dx = x - bug.x;
+                const dy = y - bug.y;
+                const distance = dx * dx + dy * dy;
+                
+                if (distance < 400) { // 20px collision distance
+                    maze.removeChild(bug.element);
+                    bugs.splice(index, 1);
+                    
+                    score += 10 * level;
+                    scoreElement.textContent = score;
+                    bugsLeft--;
+                    
+                    if (bugsLeft <= 0) {
+                        levelComplete();
+                    }
+                }
+            });
+        }
+        
+        function checkPowerUpCollisions(x, y) {
+            powerUps.forEach((pu, index) => {
+                const dx = x - pu.x;
+                const dy = y - pu.y;
+                const distance = dx * dx + dy * dy;
+                
+                if (distance < 400) {
+                    maze.removeChild(pu.element);
+                    powerUps.splice(index, 1);
+                    activatePowerUp();
+                }
+            });
+        }
+        
+        function activatePowerUp() {
+            ghosts.forEach(ghost => {
+                ghost.element.style.filter = 'brightness(0.5)';
+            });
+            
+            setTimeout(() => {
+                ghosts.forEach(ghost => {
+                    ghost.element.style.filter = '';
+                });
+            }, 10000);
+        }
+        
+        function levelComplete() {
+            level++;
+            gameRunning = false;
+            levelDisplay.textContent = level;
+            
+            if (level > 3) {
+                gameWon();
+            } else {
+                levelUpScreen.style.display = 'flex';
+                setTimeout(() => {
+                    levelUpScreen.style.display = 'none';
+                    loadLevel();
+                }, 2000);
+            }
+        }
+        
+        function loadLevel() {
+            // Clear existing elements (except walls)
+            bugs.forEach(bug => maze.removeChild(bug.element));
+            powerUps.forEach(pu => maze.removeChild(pu.element));
+            ghosts.forEach(ghost => maze.removeChild(ghost.element));
+            
+            // Reset QA engineer
+            qaEngineer.style.left = '400px';
+            qaEngineer.style.top = '300px';
+            maze.appendChild(qaEngineer);
+            
+            direction = null;
+            nextDirection = null;
+            
+            // Create new level elements
+            createBugs();
+            createGhosts();
+            createPowerUps();
+            
+            gameRunning = true;
+            gameLoopId = requestAnimationFrame(gameLoop);
+        }
+        
+        function hitByGhost() {
+            lives--;
+            updateLivesDisplay();
+            
+            if (lives <= 0) {
+                gameOver();
+            } else {
+                // Reset positions after hit
+                qaEngineer.style.left = '400px';
+                qaEngineer.style.top = '300px';
+                direction = null;
+                nextDirection = null;
+                
+                ghosts.forEach((ghost, index) => {
+                    const positions = [
+                        { x: 100, y: 100 },
+                        { x: 700, y: 100 },
+                        { x: 100, y: 500 },
+                        { x: 700, y: 500 },
+                        { x: 400, y: 150 }
+                    ];
+                    
+                    const pos = positions[index % positions.length];
+                    ghost.x = pos.x;
+                    ghost.y = pos.y;
+                    ghost.element.style.left = pos.x + 'px';
+                    ghost.element.style.top = pos.y + 'px';
+                });
+            }
+        }
+        
+        function gameOver() {
+            gameRunning = false;
+            gameOverScreen.style.display = 'flex';
+            if (gameLoopId) {
+                cancelAnimationFrame(gameLoopId);
+            }
+        }
+        
+        function gameWon() {
+            gameRunning = false;
+            gameWonScreen.style.display = 'flex';
+            if (gameLoopId) {
+                cancelAnimationFrame(gameLoopId);
+            }
+        }
+        
+        function resetGame() {
+            gameOverScreen.style.display = 'none';
+            gameWonScreen.style.display = 'none';
+            gameStartScreen.style.display = 'flex';
+        }
+        
+        function gameLoop() {
+            if (gameRunning) {
+                moveQAEngineer();
+                moveGhosts();
+                gameLoopId = requestAnimationFrame(gameLoop);
+            }
+        }
+        
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (!gameRunning) return;
+            
+            switch (e.key) {
+                case 'ArrowUp':
+                    nextDirection = 0;
+                    break;
+                case 'ArrowRight':
+                    nextDirection = 1;
+                    break;
+                case 'ArrowDown':
+                    nextDirection = 2;
+                    break;
+                case 'ArrowLeft':
+                    nextDirection = 3;
+                    break;
+            }
+        });
+        
+        // Initialize game screens
+        gameOverScreen.style.display = 'none';
+        gameWonScreen.style.display = 'none';
+        levelUpScreen.style.display = 'none';
+        gameStartScreen.style.display = 'flex';
+    </script>
+</body>
+</html>
