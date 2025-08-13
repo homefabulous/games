@@ -1,0 +1,1105 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Racing Game with Turning Roads</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            color: white;
+            background-color: #111;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 18px;
+        }
+        
+        #info span {
+            color: #f1c40f;
+            font-weight: bold;
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 10px;
+            z-index: 100;
+            width: 80%;
+            max-width: 600px;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background-color: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 10px;
+            z-index: 100;
+            display: none;
+            width: 80%;
+            max-width: 600px;
+        }
+        
+        button {
+            background-color: #f1c40f;
+            color: #111;
+            border: none;
+            padding: 15px 30px;
+            margin-top: 20px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            background-color: #f39c12;
+            transform: scale(1.05);
+        }
+        
+        h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            color: #f1c40f;
+            text-shadow: 0 0 10px rgba(241, 196, 15, 0.5);
+        }
+        
+        h2 {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 10;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 5px;
+            width: 220px;
+        }
+        
+        .speedometer {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 150px;
+            height: 150px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        .speed-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #f1c40f;
+        }
+        
+        .leaderboard {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 5px;
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="info">
+            <p>Speed: <span id="speed">0</span> km/h</p>
+            <p>Score: <span id="score">0</span></p>
+            <p>Time: <span id="time">0</span>s</p>
+            <p>Distance: <span id="distance">0</span>m</p>
+        </div>
+        
+        <div class="leaderboard">
+            <h3>Leaderboard</h3>
+            <ol id="high-scores">
+                <li>12,500</li>
+                <li>10,200</li>
+                <li>8,400</li>
+            </ol>
+        </div>
+        
+        <div class="speedometer">
+            <div class="speed-value">0</div>
+        </div>
+        
+        <div id="start-screen">
+            <h1>3D RACING GAME</h1>
+            <p>Race through winding city streets and avoid obstacles!</p>
+            <p>Collect coins to increase your score. Stay on the road!</p>
+            <button id="start-btn">START RACE</button>
+        </div>
+        
+        <div id="game-over">
+            <h1>GAME OVER</h1>
+            <p>Final Score: <span id="final-score">0</span></p>
+            <p>Distance Traveled: <span id="final-distance">0</span>m</p>
+            <p>Time Survived: <span id="final-time">0</span>s</p>
+            <button id="restart-btn">PLAY AGAIN</button>
+        </div>
+        
+        <div id="controls">
+            <p><strong>Controls:</strong></p>
+            <p>W/↑ - Accelerate</p>
+            <p>S/↓ - Brake/Reverse</p>
+            <p>A/← - Steer Left</p>
+            <p>D/→ - Steer Right</p>
+            <p>SPACE - Handbrake</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Game variables
+        let scene, camera, renderer;
+        let car, roadSegments = [], coins = [], obstacles = [];
+        let isGameRunning = false;
+        let score = 0;
+        let gameTime = 0;
+        let carSpeed = 0;
+        let maxSpeed = 150;
+        let acceleration = 0.5;
+        let deceleration = 0.3;
+        let rotationSpeed = 0.05;
+        let keys = {};
+        let distanceTraveled = 0;
+        let roadDirection = 0; // Angle of current road segment
+        let nextTurn = 0; // Next turn angle (0 = straight, positive = right, negative = left)
+        let turnTimer = 0;
+        
+        // Initialize the game
+        function init() {
+            // Set up scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB); // Sky blue
+            
+            // Add fog for depth
+            scene.fog = new THREE.Fog(0x87CEEB, 50, 200);
+            
+            // Set up camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 10, 15);
+            camera.lookAt(0, 0, 0);
+            
+            // Set up renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('game-container').prepend(renderer.domElement);
+            
+            // Add lighting
+            const ambientLight = new THREE.AmbientLight(0x404040);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(1, 1, 1);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            // Create initial road segments
+            createInitialRoad();
+            
+            // Create car
+            createCar();
+            
+            // Add event listeners
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('keydown', onKeyDown);
+            window.addEventListener('keyup', onKeyUp);
+            
+            // Start screen buttons
+            document.getElementById('start-btn').addEventListener('click', startGame);
+            document.getElementById('restart-btn').addEventListener('click', restartGame);
+            
+            animate();
+        }
+        
+        function createInitialRoad() {
+            const segmentLength = 50;
+            
+            // Create initial straight segments
+            createStraightRoadSegment(0, segmentLength);
+            createStraightRoadSegment(-segmentLength, segmentLength);
+            
+            // Schedule the first turn after initial straight segments
+            setTimeout(() => {
+                nextTurn = Math.PI / 8 * (Math.random() > 0.5 ? 1 : -1);
+            }, 5000);
+        }
+        
+        function createStraightRoadSegment(startZ, length) {
+            const width = 20;
+            
+            // Road surface
+            const roadGeometry = new THREE.PlaneGeometry(width, length);
+            roadGeometry.rotateX(-Math.PI / 2);
+            const roadMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+            const roadSegment = new THREE.Mesh(roadGeometry, roadMaterial);
+            roadSegment.position.z = startZ + length/2;
+            roadSegment.receiveShadow = true;
+            scene.add(roadSegment);
+            
+            // Road markings (center lines)
+            const lineLength = 3;
+            const lineGap = 3;
+            const lineCount = Math.floor(length / (lineLength + lineGap));
+            
+            for (let i = 0; i < lineCount; i++) {
+                const lineGeometry = new THREE.BoxGeometry(0.5, 0.1, lineLength);
+                const lineMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00 });
+                const line = new THREE.Mesh(lineGeometry, lineMaterial);
+                line.position.set(0, 0.1, startZ + (i * (lineLength + lineGap)) + lineLength/2);
+                line.receiveShadow = true;
+                scene.add(line);
+            }
+            
+            // Sidewalks
+            const sidewalkGeometry = new THREE.BoxGeometry(width, 0.2, length);
+            const sidewalkMaterial = new THREE.MeshStandardMaterial({ color: 0x555555 });
+            
+            const leftSidewalk = new THREE.Mesh(sidewalkGeometry, sidewalkMaterial);
+            leftSidewalk.position.set(-width/2 - 2, 0.2, startZ + length/2);
+            scene.add(leftSidewalk);
+            
+            const rightSidewalk = new THREE.Mesh(sidewalkGeometry, sidewalkMaterial);
+            rightSidewalk.position.set(width/2 + 2, 0.2, startZ + length/2);
+            scene.add(rightSidewalk);
+            
+            // Add to road segments
+            roadSegments.push({
+                type: 'straight',
+                start: startZ,
+                end: startZ + length,
+                leftBoundary: -width/2,
+                rightBoundary: width/2,
+                mesh: roadSegment,
+                leftSidewalk: leftSidewalk,
+                rightSidewalk: rightSidewalk
+            });
+            
+            // Add buildings
+            addBuildingsAlongSegment(startZ, length);
+        }
+        
+        function createCurvedRoadSegment(startPoint, angle, radius, width = 20) {
+            const segments = 32; // Number of segments for the curve
+            const segmentAngle = angle / segments;
+            const segmentLength = 2 * Math.PI * radius * Math.abs(angle) / (2 * Math.PI * segments);
+            
+            const group = new THREE.Group();
+            scene.add(group);
+            
+            // Determine left/right turn
+            const turnDirection = angle > 0 ? 1 : -1;
+            
+            // Create each segment of the curve
+            for (let i = 0; i < segments; i++) {
+                const currentAngle = i * segmentAngle;
+                const nextAngle = (i + 1) * segmentAngle;
+                
+                // Calculate positions
+                const innerStart = new THREE.Vector3(
+                    startPoint.x + Math.sin(currentAngle) * (radius - width/2),
+                    0,
+                    startPoint.z + Math.cos(currentAngle) * (radius - width/2)
+                );
+                
+                const outerStart = new THREE.Vector3(
+                    startPoint.x + Math.sin(currentAngle) * (radius + width/2),
+                    0,
+                    startPoint.z + Math.cos(currentAngle) * (radius + width/2)
+                );
+                
+                const innerEnd = new THREE.Vector3(
+                    startPoint.x + Math.sin(nextAngle) * (radius - width/2),
+                    0,
+                    startPoint.z + Math.cos(nextAngle) * (radius - width/2)
+                );
+                
+                const outerEnd = new THREE.Vector3(
+                    startPoint.x + Math.sin(nextAngle) * (radius + width/2),
+                    0,
+                    startPoint.z + Math.cos(nextAngle) * (radius + width/2)
+                );
+                
+                // Create road segment
+                const roadShape = new THREE.Shape();
+                roadShape.moveTo(innerStart.x - startPoint.x, innerStart.z - startPoint.z);
+                roadShape.lineTo(outerStart.x - startPoint.x, outerStart.z - startPoint.z);
+                roadShape.lineTo(outerEnd.x - startPoint.x, outerEnd.z - startPoint.z);
+                roadShape.lineTo(innerEnd.x - startPoint.x, innerEnd.z - startPoint.z);
+                roadShape.lineTo(innerStart.x - startPoint.x, innerStart.z - startPoint.z);
+                
+                const extrudeSettings = { depth: 0.1, bevelEnabled: false };
+                const roadGeometry = new THREE.ExtrudeGeometry(roadShape, extrudeSettings);
+                roadGeometry.rotateX(-Math.PI / 2);
+                
+                const roadMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+                const roadMesh = new THREE.Mesh(roadGeometry, roadMaterial);
+                roadMesh.position.set(startPoint.x, 0, startPoint.z);
+                roadMesh.receiveShadow = true;
+                group.add(roadMesh);
+                
+                // Add center lines for curved segments
+                if (i % 3 === 0) {
+                    const centerStart = new THREE.Vector3(
+                        startPoint.x + Math.sin(currentAngle) * radius,
+                        0.1,
+                        startPoint.z + Math.cos(currentAngle) * radius
+                    );
+                    
+                    const centerEnd = new THREE.Vector3(
+                        startPoint.x + Math.sin(nextAngle) * radius,
+                        0.1,
+                        startPoint.z + Math.cos(nextAngle) * radius
+                    );
+                    
+                    const lineGeometry = new THREE.BufferGeometry().setFromPoints([centerStart, centerEnd]);
+                    const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffff00 });
+                    const line = new THREE.Line(lineGeometry, lineMaterial);
+                    scene.add(line);
+                }
+                
+                // Add sidewalks
+                const innerSidewalkRadius = radius - width/2 - 2;
+                const outerSidewalkRadius = radius + width/2 + 2;
+                
+                const sidewalkGeometry = new THREE.RingGeometry(
+                    innerSidewalkRadius, outerSidewalkRadius, 8, 1, 
+                    currentAngle, segmentAngle
+                );
+                
+                sidewalkGeometry.rotateX(-Math.PI / 2);
+                const rotationY = angle > 0 ? Math.PI : 0;
+                sidewalkGeometry.rotateY(rotationY);
+                
+                const sidewalkMaterial = new THREE.MeshStandardMaterial({ color: 0x555555 });
+                const sidewalk = new THREE.Mesh(sidewalkGeometry, sidewalkMaterial);
+                sidewalk.position.set(startPoint.x, 0.2, startPoint.z);
+                group.add(sidewalk);
+            }
+            
+            // Calculate end point
+            const endPoint = new THREE.Vector3(
+                startPoint.x + Math.sin(angle) * radius,
+                0,
+                startPoint.z + Math.cos(angle) * radius
+            );
+            
+            // Add buildings along the curve
+            addBuildingsAlongCurve(startPoint, endPoint, angle, radius, width);
+            
+            // Add to road segments
+            roadSegments.push({
+                type: 'curve',
+                start: startPoint,
+                angle: angle,
+                radius: radius,
+                endPoint: endPoint,
+                width: width,
+                mesh: group,
+                leftBoundary: {
+                    center: new THREE.Vector3(startPoint.x, 0, startPoint.z),
+                    radius: radius - width/2,
+                    angle: angle
+                },
+                rightBoundary: {
+                    center: new THREE.Vector3(startPoint.x, 0, startPoint.z),
+                    radius: radius + width/2,
+                    angle: angle
+                }
+            });
+            
+            return endPoint;
+        }
+        
+        function addBuildingsAlongSegment(startZ, length) {
+            const width = 20;
+            const buildingCount = 3 + Math.floor(Math.random() * 4);
+            const buildingSpacing = length / buildingCount;
+            
+            for (let i = 0; i < buildingCount; i++) {
+                const zPos = startZ + i * buildingSpacing + (Math.random() * buildingSpacing * 0.3);
+                
+                // Left buildings
+                if (Math.random() > 0.3) {
+                    const leftBuilding = createBuilding(4 + Math.random() * 4, 15 + Math.random() * 10);
+                    leftBuilding.position.set(
+                        -width/2 - 8 - Math.random() * 10,
+                        leftBuilding.geometry.parameters.height / 2,
+                        zPos
+                    );
+                    scene.add(leftBuilding);
+                }
+                
+                // Right buildings
+                if (Math.random() > 0.3) {
+                    const rightBuilding = createBuilding(4 + Math.random() * 4, 15 + Math.random() * 10);
+                    rightBuilding.position.set(
+                        width/2 + 8 + Math.random() * 10,
+                        rightBuilding.geometry.parameters.height / 2,
+                        zPos
+                    );
+                    scene.add(rightBuilding);
+                }
+            }
+        }
+        
+        function addBuildingsAlongCurve(startPoint, endPoint, angle, radius, roadWidth) {
+            const buildingCount = 8 + Math.floor(Math.random() * 6);
+            const buildingAngleStep = angle / buildingCount;
+            
+            for (let i = 0; i < buildingCount; i++) {
+                const currentAngle = i * buildingAngleStep * 0.8 + angle * 0.1;
+                
+                // Inner curve buildings (right side for left turn, left side for right turn)
+                if (Math.random() > 0.4) {
+                    const innerBuilding = createBuilding(4 + Math.random() * 4, 15 + Math.random() * 10);
+                    
+                    const innerRadius = radius - roadWidth/2 - 8 - Math.random() * 10;
+                    innerBuilding.position.set(
+                        startPoint.x + Math.sin(currentAngle) * innerRadius,
+                        innerBuilding.geometry.parameters.height / 2,
+                        startPoint.z + Math.cos(currentAngle) * innerRadius
+                    );
+                    
+                    // Rotate building to face the road
+                    innerBuilding.rotation.y = -currentAngle + (angle > 0 ? Math.PI : 0);
+                    scene.add(innerBuilding);
+                }
+                
+                // Outer curve buildings
+                if (Math.random() > 0.4) {
+                    const outerBuilding = createBuilding(4 + Math.random() * 4, 15 + Math.random() * 10);
+                    
+                    const outerRadius = radius + roadWidth/2 + 8 + Math.random() * 10;
+                    outerBuilding.position.set(
+                        startPoint.x + Math.sin(currentAngle) * outerRadius,
+                        outerBuilding.geometry.parameters.height / 2,
+                        startPoint.z + Math.cos(currentAngle) * outerRadius
+                    );
+                    
+                    // Rotate building to face the road
+                    outerBuilding.rotation.y = -currentAngle + (angle > 0 ? Math.PI : 0);
+                    scene.add(outerBuilding);
+                }
+            }
+        }
+        
+        function createBuilding(width, height, hasWindows = true) {
+            const buildingGeometry = new THREE.BoxGeometry(width, height, width);
+            let buildingMaterial;
+            
+            if (hasWindows) {
+                const colors = [0x3498db, 0x2ecc71, 0xe74c3c, 0xf39c12];
+                buildingMaterial = new THREE.MeshStandardMaterial({ 
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    roughness: 0.7,
+                    metalness: 0.1
+                });
+            } else {
+                buildingMaterial = new THREE.MeshStandardMaterial({ color: 0x7f8c8d });
+            }
+            
+            const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
+            building.castShadow = true;
+            building.receiveShadow = true;
+            return building;
+        }
+        
+        function createCar() {
+            const carGeometry = new THREE.BoxGeometry(2, 1, 3);
+            const carMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+            car = new THREE.Mesh(carGeometry, carMaterial);
+            car.position.set(0, 1, 0);
+            car.castShadow = true;
+            car.receiveShadow = true;
+            scene.add(car);
+            
+            // Add windows
+            const windowGeometry = new THREE.BoxGeometry(1.8, 0.8, 2.8);
+            const windowMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x000000,
+                transparent: true,
+                opacity: 0.5,
+                metalness: 0.7,
+                roughness: 0.2
+            });
+            const windows = new THREE.Mesh(windowGeometry, windowMaterial);
+            windows.position.y = 0.5;
+            car.add(windows);
+            
+            // Add wheel positions (visual only)
+            const wheelGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.2, 16);
+            const wheelMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+            
+            // Front wheels
+            const frontLeftWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+            frontLeftWheel.rotation.z = Math.PI / 2;
+            frontLeftWheel.position.set(-1.2, 0.4, 1);
+            car.add(frontLeftWheel);
+            
+            const frontRightWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+            frontRightWheel.rotation.z = Math.PI / 2;
+            frontRightWheel.position.set(1.2, 0.4, 1);
+            car.add(frontRightWheel);
+            
+            // Rear wheels
+            const rearLeftWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+            rearLeftWheel.rotation.z = Math.PI / 2;
+            rearLeftWheel.position.set(-1.2, 0.4, -1);
+            car.add(rearLeftWheel);
+            
+            const rearRightWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+            rearRightWheel.rotation.z = Math.PI / 2;
+            rearRightWheel.position.set(1.2, 0.4, -1);
+            car.add(rearRightWheel);
+        }
+        
+        function spawnCoins() {
+            if (!isGameRunning) return;
+            
+            // Remove old coins that are behind the car
+            coins = coins.filter(coin => {
+                if (coin.position.distanceTo(car.position) > 100) {
+                    scene.remove(coin);
+                    return false;
+                }
+                return true;
+            });
+            
+            // Spawn new coins
+            if (Math.random() < 0.05 && coins.length < 30) {
+                const coinGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.1, 32);
+                const coinMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0xf1c40f,
+                    metalness: 0.9,
+                    roughness: 0.2,
+                    emissive: 0xf1c40f,
+                    emissiveIntensity: 0.3
+                });
+                
+                const coin = new THREE.Mesh(coinGeometry, coinMaterial);
+                coin.rotation.x = Math.PI / 2;
+                
+                // Position ahead of the car in the direction of the road
+                const distanceAhead = 50 + Math.random() * 50;
+                const roadAngle = getCurrentRoadAngleAtDistance(distanceAhead);
+                
+                const offsetX = (Math.random() - 0.5) * 12;
+                const offsetZ = distanceAhead;
+                
+                const rotatedX = offsetX * Math.cos(roadAngle) - offsetZ * Math.sin(roadAngle);
+                const rotatedZ = offsetX * Math.sin(roadAngle) + offsetZ * Math.cos(roadAngle);
+                
+                coin.position.set(
+                    car.position.x + rotatedX,
+                    1,
+                    car.position.z + rotatedZ
+                );
+                
+                coin.castShadow = true;
+                coin.receiveShadow = true;
+                scene.add(coin);
+                coins.push(coin);
+            }
+        }
+        
+        function spawnObstacles() {
+            if (!isGameRunning) return;
+            
+            // Remove old obstacles that are behind the car
+            obstacles = obstacles.filter(obstacle => {
+                if (obstacle.position.distanceTo(car.position) > 100) {
+                    scene.remove(obstacle);
+                    return false;
+                }
+                return true;
+            });
+            
+            // Spawn new obstacles
+            if (Math.random() < 0.03 && obstacles.length < 20) {
+                const obstacleTypes = ['box', 'cone', 'cylinder'];
+                const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+                let obstacle;
+                
+                const colors = [0xe74c3c, 0x9b59b6, 0x3498db, 0x2ecc71];
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                
+                switch (type) {
+                    case 'box':
+                        obstacle = new THREE.Mesh(
+                            new THREE.BoxGeometry(1.5, 1.5, 1.5),
+                            new THREE.MeshStandardMaterial({ color })
+                        );
+                        break;
+                    case 'cone':
+                        obstacle = new THREE.Mesh(
+                            new THREE.ConeGeometry(0.8, 2, 32),
+                            new THREE.MeshStandardMaterial({ color })
+                        );
+                        break;
+                    case 'cylinder':
+                        obstacle = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.8, 0.8, 1.5, 32),
+                            new THREE.MeshStandardMaterial({ color })
+                        );
+                        break;
+                }
+                
+                obstacle.castShadow = true;
+                obstacle.receiveShadow = true;
+                
+                // Position ahead of the car in the direction of the road
+                const distanceAhead = 50 + Math.random() * 50;
+                const roadAngle = getCurrentRoadAngleAtDistance(distanceAhead);
+                
+                const offsetX = (Math.random() - 0.5) * 12;
+                const offsetZ = distanceAhead;
+                
+                const rotatedX = offsetX * Math.cos(roadAngle) - offsetZ * Math.sin(roadAngle);
+                const rotatedZ = offsetX * Math.sin(roadAngle) + offsetZ * Math.cos(roadAngle);
+                
+                obstacle.position.set(
+                    car.position.x + rotatedX,
+                    type === 'cone' ? 1 : 0.75,
+                    car.position.z + rotatedZ
+                );
+                
+                scene.add(obstacle);
+                obstacles.push(obstacle);
+            }
+        }
+        
+        function getCurrentRoadAngleAtDistance(distance) {
+            let currentRoadAngle = 0;
+            let accumulatedDistance = 0;
+            let carSegmentIndex = -1;
+            
+            // Find which segment the car is currently on
+            for (let i = 0; i < roadSegments.length; i++) {
+                if (roadSegments[i].type === 'straight') {
+                    if (car.position.z >= roadSegments[i].start && car.position.z <= roadSegments[i].end) {
+                        carSegmentIndex = i;
+                        break;
+                    }
+                } else if (roadSegments[i].type === 'curve') {
+                    // For simplicity, we'll just check if we're after the start of the curve
+                    // A more precise check would involve checking angle around the curve
+                    if (i > 0 && roadSegments[i-1].type === 'straight' && 
+                        car.position.z >= roadSegments[i-1].end) {
+                        carSegmentIndex = i;
+                        break;
+                    }
+                }
+            }
+            
+            if (carSegmentIndex === -1) return 0;
+            
+            // Calculate the angle up to the requested distance
+            let remainingDistance = distance;
+            for (let i = carSegmentIndex; i < roadSegments.length && remainingDistance > 0; i++) {
+                const segment = roadSegments[i];
+                
+                if (segment.type === 'straight') {
+                    const segmentLength = segment.end - segment.start;
+                    const availableDistance = Math.min(remainingDistance, segmentLength);
+                    remainingDistance -= availableDistance;
+                } else if (segment.type === 'curve') {
+                    const curveLength = Math.abs(segment.angle * segment.radius);
+                    const availableDistance = Math.min(remainingDistance, curveLength);
+                    currentRoadAngle += segment.angle * (availableDistance / curveLength);
+                    remainingDistance -= availableDistance;
+                }
+            }
+            
+            return currentRoadAngle;
+        }
+        
+        function updateRoadSegments() {
+            // Remove segments that are too far behind
+            const maxDistanceBehind = 100;
+            const segmentsToRemove = roadSegments.filter(segment => {
+                if (segment.type === 'straight') {
+                    return segment.end < car.position.z - maxDistanceBehind;
+                } else {
+                    return segment.endPoint.z < car.position.z - maxDistanceBehind;
+                }
+            });
+            
+            segmentsToRemove.forEach(segment => {
+                if (segment.mesh) scene.remove(segment.mesh);
+                if (segment.leftSidewalk) scene.remove(segment.leftSidewalk);
+                if (segment.rightSidewalk) scene.remove(segment.rightSidewalk);
+            });
+            
+            // Keep only segments that are still in use
+            roadSegments = roadSegments.filter(segment => {
+                if (segment.type === 'straight') {
+                    return segment.end >= car.position.z - maxDistanceBehind;
+                } else {
+                    return segment.endPoint.z >= car.position.z - maxDistanceBehind;
+                }
+            });
+            
+            // Add new segments if needed
+            const lastSegment = roadSegments[roadSegments.length - 1];
+            
+            if (!lastSegment || (lastSegment.type === 'straight' && car.position.z + 200 > lastSegment.end)) {
+                // Decide whether to create a straight segment or a curve
+                if (nextTurn !== 0) {
+                    // Create a curve
+                    const radius = 30 + Math.random() * 30;
+                    const turnAngle = Math.PI / 4 * (Math.random() > 0.5 ? 1 : -1);
+                    
+                    let startPoint;
+                    if (lastSegment.type === 'straight') {
+                        startPoint = new THREE.Vector3(lastSegment.leftBoundary, 0, lastSegment.end);
+                    } else {
+                        startPoint = lastSegment.endPoint;
+                    }
+                    
+                    const endPoint = createCurvedRoadSegment(startPoint, turnAngle, radius);
+                    
+                    // Schedule next turn (could be another curve or straight)
+                    const turnWait = 3000 + Math.random() * 5000;
+                    setTimeout(() => {
+                        nextTurn = Math.random() > 0.5 ? 0 : Math.PI / 8 * (Math.random() > 0.5 ? 1 : -1);
+                    }, turnWait);
+                } else {
+                    // Create straight segment
+                    const segmentLength = 50 + Math.random() * 50;
+                    let startZ;
+                    if (lastSegment.type === 'straight') {
+                        startZ = lastSegment.end;
+                    } else {
+                        startZ = lastSegment.endPoint.z;
+                    }
+                    createStraightRoadSegment(startZ, segmentLength);
+                    
+                    // Schedule the next turn
+                    const turnWait = 5000 + Math.random() * 5000;
+                    setTimeout(() => {
+                        nextTurn = Math.PI / 8 * (Math.random() > 0.5 ? 1 : -1);
+                    }, turnWait);
+                }
+            }
+        }
+        
+        function checkPositionOnRoad() {
+            // Find current road segment
+            let currentSegment = null;
+            let relativeX = 0;
+            let relativeZ = 0;
+            
+            for (const segment of roadSegments) {
+                if (segment.type === 'straight') {
+                    if (car.position.z >= segment.start && car.position.z <= segment.end) {
+                        currentSegment = segment;
+                        relativeX = car.position.x;
+                        relativeZ = car.position.z - segment.start;
+                        break;
+                    }
+                } else if (segment.type === 'curve') {
+                    // Calculate distance from curve center
+                    const dx = car.position.x - segment.start.x;
+                    const dz = car.position.z - segment.start.z;
+                    const distance = Math.sqrt(dx * dx + dz * dz);
+                    
+                    // Check if we're approximately on this curve
+                    if (Math.abs(distance - segment.radius) < segment.width/2 + 2) {
+                        currentSegment = segment;
+                        break;
+                    }
+                }
+            }
+            
+            if (!currentSegment) return false;
+            
+            if (currentSegment.type === 'straight') {
+                // Check if car is within road boundaries
+                if (car.position.x < currentSegment.leftBoundary || 
+                    car.position.x > currentSegment.rightBoundary) {
+                    return false;
+                }
+            } else {
+                // Curve segment - check if within road boundaries
+                const dx = car.position.x - currentSegment.start.x;
+                const dz = car.position.z - currentSegment.start.z;
+                const distance = Math.sqrt(dx * dx + dz * dz);
+                
+                const innerBoundary = currentSegment.radius - currentSegment.width/2;
+                const outerBoundary = currentSegment.radius + currentSegment.width/2;
+                
+                if (distance < innerBoundary || distance > outerBoundary) {
+                    return false;
+                }
+            }
+            
+            return true;
+        }
+        
+        function checkCollisions() {
+            if (!isGameRunning) return;
+            
+            // Check coin collisions
+            coins.forEach((coin, index) => {
+                if (isColliding(car, coin)) {
+                    scene.remove(coin);
+                    coins.splice(index, 1);
+                    score += 10;
+                    document.getElementById('score').textContent = score;
+                    document.querySelector('.speedometer .speed-value').textContent = Math.round(Math.abs(carSpeed));
+                }
+            });
+            
+            // Check obstacle collisions
+            obstacles.forEach((obstacle, index) => {
+                if (isColliding(car, obstacle)) {
+                    score -= 10;
+                  if (score < 0) {
+                    gameOver();
+                     
+                  }
+                }
+            });
+            
+            // Check if car is on road
+            if (!checkPositionOnRoad()) {
+                gameOver();
+            }
+        }
+        
+        function isColliding(obj1, obj2) {
+            const dx = obj1.position.x - obj2.position.x;
+            const dy = obj1.position.y - obj2.position.y;
+            const dz = obj1.position.z - obj2.position.z;
+            const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            return distance < 2;
+        }
+        
+        function updateCarMovement() {
+            if (!isGameRunning) return;
+            
+            // Acceleration/deceleration
+            if (keys['ArrowUp'] || keys['w']) {
+                carSpeed += acceleration;
+            } else if (keys['ArrowDown'] || keys['s']) {
+                carSpeed -= deceleration * 1.5; // Stronger deceleration when reversing
+            } else if (keys[' ']) {
+                // Braking
+                if (carSpeed > 0) {
+                    carSpeed -= deceleration * 2;
+                    if (carSpeed < 0) carSpeed = 0;
+                } else if (carSpeed < 0) {
+                    carSpeed += deceleration * 2;
+                    if (carSpeed > 0) carSpeed = 0;
+                }
+            } else {
+                // Natural deceleration
+                if (carSpeed > 0) {
+                    carSpeed -= deceleration * 0.5;
+                    if (carSpeed < 0) carSpeed = 0;
+                } else if (carSpeed < 0) {
+                    carSpeed += deceleration * 0.5;
+                    if (carSpeed > 0) carSpeed = 0;
+                }
+            }
+            
+            // Limit speed
+            carSpeed = Math.max(-maxSpeed / 2, Math.min(carSpeed, maxSpeed));
+            document.getElementById('speed').textContent = Math.abs(Math.round(carSpeed));
+            document.querySelector('.speedometer .speed-value').textContent = Math.round(Math.abs(carSpeed));
+            
+            // Update car position based on speed and road direction
+            const deltaZ = carSpeed * 0.05;
+            const deltaX = Math.sin(car.rotation.y) * deltaZ;
+            car.position.x += deltaX;
+            car.position.z += Math.cos(car.rotation.y) * deltaZ;
+            distanceTraveled += deltaZ;
+            document.getElementById('distance').textContent = Math.round(distanceTraveled);
+            
+            // Rotation control
+            if ((keys['ArrowLeft'] || keys['a']) && carSpeed !== 0) {
+                car.rotation.y += rotationSpeed * (carSpeed > 0 ? 1 : -1) * (carSpeed / maxSpeed);
+            }
+            if ((keys['ArrowRight'] || keys['d']) && carSpeed !== 0) {
+                car.rotation.y -= rotationSpeed * (carSpeed > 0 ? 1 : -1) * (carSpeed / maxSpeed);
+            }
+            
+            // Automatic centering when no steering input
+            if (!keys['ArrowLeft'] && !keys['a'] && !keys['ArrowRight'] && !keys['d']) {
+                if (car.rotation.y > 0) {
+                    car.rotation.y = Math.max(0, car.rotation.y - 0.02);
+                } else if (car.rotation.y < 0) {
+                    car.rotation.y = Math.min(0, car.rotation.y + 0.02);
+                }
+            }
+        }
+        
+        function updateCamera() {
+            // Calculate camera position based on car direction
+            const carDirection = new THREE.Vector3(
+                Math.sin(car.rotation.y),
+                0,
+                Math.cos(car.rotation.y)
+            ).normalize();
+            
+            const cameraOffset = new THREE.Vector3(
+                -carDirection.x * 8,
+                5 + (carSpeed / maxSpeed * 2), // Camera lifts slightly at high speed
+                -carDirection.z * 10 - (carSpeed / maxSpeed * 3) // Camera pulls back at high speed
+            );
+            
+            camera.position.set(
+                car.position.x + cameraOffset.x,
+                car.position.y + cameraOffset.y,
+                car.position.z + cameraOffset.z
+            );
+            
+            // Smooth camera look-ahead
+            const lookAheadDistance = 20 + (carSpeed / maxSpeed * 10);
+            const lookAhead = new THREE.Vector3(
+                car.position.x + carDirection.x * lookAheadDistance,
+                car.position.y,
+                car.position.z + carDirection.z * lookAheadDistance
+            );
+            
+            camera.lookAt(lookAhead);
+        }
+        
+        function startGame() {
+            document.getElementById('start-screen').style.display = 'none';
+            isGameRunning = true;
+            score = 0;
+            gameTime = 0;
+            carSpeed = 0;
+            car.position.set(0, 1, 0);
+            car.rotation.set(0, 0, 0);
+            distanceTraveled = 0;
+            nextTurn = 0;
+            
+            // Remove all coins and obstacles
+            coins.forEach(coin => scene.remove(coin));
+            coins = [];
+            obstacles.forEach(obstacle => scene.remove(obstacle));
+            obstacles = [];
+            
+            // Reset road segments
+            roadSegments.forEach(segment => {
+                if (segment.mesh) scene.remove(segment.mesh);
+                if (segment.leftSidewalk) scene.remove(segment.leftSidewalk);
+                if (segment.rightSidewalk) scene.remove(segment.rightSidewalk);
+            });
+            roadSegments = [];
+            createInitialRoad();
+            
+            // Update UI
+            document.getElementById('score').textContent = score;
+            document.getElementById('time').textContent = gameTime.toFixed(1);
+            document.getElementById('distance').textContent = 0;
+            document.getElementById('speed').textContent = 0;
+            document.querySelector('.speedometer .speed-value').textContent = 0;
+        }
+        
+        function restartGame() {
+            document.getElementById('game-over').style.display = 'none';
+            startGame();
+        }
+        
+        function gameOver() {
+            isGameRunning = false;
+            carSpeed = 0;
+            document.getElementById('final-score').textContent = score;
+            document.getElementById('final-time').textContent = gameTime.toFixed(1);
+            document.getElementById('final-distance').textContent = Math.round(distanceTraveled);
+            document.getElementById('game-over').style.display = 'block';
+            
+            // Update leaderboard (simplified)
+            const highScores = [
+                12500, 10200, 8400, score
+            ].sort((a, b) => b - a).slice(0, 3);
+            
+            const highScoresList = document.getElementById('high-scores');
+            highScoresList.innerHTML = '';
+            highScores.forEach(score => {
+                const li = document.createElement('li');
+                li.textContent = score.toLocaleString();
+                highScoresList.appendChild(li);
+            });
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        function onKeyDown(event) {
+            keys[event.key.toLowerCase()] = true;
+        }
+        
+        function onKeyUp(event) {
+            keys[event.key.toLowerCase()] = false;
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (isGameRunning) {
+                gameTime += 0.1;
+                document.getElementById('time').textContent = gameTime.toFixed(1);
+                
+                updateCarMovement();
+                updateRoadSegments();
+                spawnCoins();
+                spawnObstacles();
+                checkCollisions();
+                updateCamera();
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Start the game
+        init();
+    </script>
+</body>
+</html>
