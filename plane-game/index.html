@@ -1,0 +1,447 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sky Pilot Adventure</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        body {
+            font-family: 'Press Start 2P', cursive;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #1a2980, #26d0ce);
+            height: 100vh;
+            margin: 0;
+            user-select: none;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        #plane {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            transition: transform 0.1s ease-out;
+            z-index: 10;
+        }
+        
+        .cloud {
+            position: absolute;
+            background-color: white;
+            border-radius: 50%;
+            opacity: 0.8;
+        }
+        
+        .star {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="gold"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>');
+            background-size: contain;
+            z-index: 5;
+            animation: twinkle 1s infinite alternate;
+        }
+        
+        @keyframes twinkle {
+            from { opacity: 0.7; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1.1); }
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            background: linear-gradient(to bottom, #1a2980, #26d0ce);
+        }
+        
+        .title {
+            font-size: 3rem;
+            color: white;
+            text-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
+            margin-bottom: 2rem;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        .btn {
+            background-color: #FFD700;
+            color: #1a2980;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            font-family: 'Press Start 2P', cursive;
+            cursor: pointer;
+            border-radius: 10px;
+            box-shadow: 0 5px 0 #b8860b;
+            transition: all 0.1s;
+            margin: 10px;
+        }
+        
+        .btn:hover {
+            background-color: #FFC000;
+        }
+        
+        .btn:active {
+            transform: translateY(5px);
+            box-shadow: 0 0px 0 #b8860b;
+        }
+        
+        .score-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 1.2rem;
+            text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5);
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+    <div id="start-screen">
+        <h1 class="title">SKY PILOT ADVENTURE</h1>
+        <button id="start-btn" class="btn">START GAME</button>
+        <div class="mt-8 text-white text-center">
+            <p>Use mouse or touch to control the plane</p>
+            <p>Avoid clouds and collect stars!</p>
+        </div>
+    </div>
+    
+    <div id="game-container">
+        <div class="score-display">
+            Score: <span id="score">0</span> | 
+            High Score: <span id="high-score">0</span>
+        </div>
+        <img id="plane" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23FFD700'><g transform='rotate(90 12 12)'><path d='M22 16.21v-1.895L14 8V4a2 2 0 0 0-4 0v4l-8 6.315v1.895l8-2.526V18l-2 2v2l3.5-1 3.5 1v-2l-2-2v-4.316l8 2.526z'/></g></svg>" alt="Plane">
+        
+        <div id="game-over">
+            <h1 class="text-4xl text-white mb-8">GAME OVER</h1>
+            <p class="text-2xl text-yellow-300 mb-8">Your Score: <span id="final-score">0</span></p>
+            <button id="restart-btn" class="btn">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <script>
+        // Game variables
+        let score = 0;
+        let highScore = localStorage.getItem('highScore') || 0;
+        let gameRunning = false;
+        let gameSpeed = 3;
+        let planeX = 50;
+        let planeY = 50;
+        let planeElement = document.getElementById('plane');
+        let gameContainer = document.getElementById('game-container');
+        let scoreElement = document.getElementById('score');
+        let highScoreElement = document.getElementById('highScore');
+        let finalScoreElement = document.getElementById('final-score');
+        let gameOverScreen = document.getElementById('game-over');
+        let startScreen = document.getElementById('start-screen');
+        let clouds = [];
+        let stars = [];
+        let animationId;
+        
+        // Initialize game
+        function init() {
+            // Set high score display
+            document.getElementById('high-score').textContent = highScore;
+            
+            // Event listeners
+            document.getElementById('start-btn').addEventListener('click', startGame);
+            document.getElementById('restart-btn').addEventListener('click', restartGame);
+            
+            // Touch/mouse controls
+            gameContainer.addEventListener('mousemove', movePlane);
+            gameContainer.addEventListener('touchmove', function(e) {
+                e.preventDefault();
+                movePlane(e.touches[0]);
+            });
+        }
+        
+        // Start game
+        function startGame() {
+            startScreen.style.display = 'none';
+            gameRunning = true;
+            score = 0;
+            gameSpeed = 3;
+            updateScore();
+            
+            // Position plane in center
+            planeX = gameContainer.clientWidth / 2;
+            planeY = gameContainer.clientHeight / 2;
+            updatePlanePosition();
+            
+            // Clear any existing elements
+            clearGameElements();
+            
+            // Start game loop
+            gameLoop();
+            
+            // Start spawning obstacles and stars
+            setInterval(spawnCloud, 1500);
+            setInterval(spawnStar, 2000);
+        }
+        
+        // Game loop
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            // Move clouds
+            moveClouds();
+            
+            // Move stars
+            moveStars();
+            
+            // Check collisions
+            checkCollisions();
+            
+            // Increase difficulty over time
+            if (score > 0 && score % 10 === 0) {
+                gameSpeed = 3 + Math.floor(score / 10) * 0.5;
+            }
+            
+            animationId = requestAnimationFrame(gameLoop);
+        }
+        
+        // Move plane with mouse/touch
+        function movePlane(e) {
+            if (!gameRunning) return;
+            
+            const rect = gameContainer.getBoundingClientRect();
+            planeX = e.clientX - rect.left;
+            planeY = e.clientY - rect.top;
+            
+            // Keep plane within bounds
+            planeX = Math.max(30, Math.min(planeX, gameContainer.clientWidth - 30));
+            planeY = Math.max(30, Math.min(planeY, gameContainer.clientHeight - 30));
+            
+            updatePlanePosition();
+        }
+        
+        // Update plane position on screen
+        function updatePlanePosition() {
+            planeElement.style.left = (planeX - 30) + 'px';
+            planeElement.style.top = (planeY - 30) + 'px';
+            
+            // Tilt plane based on movement direction
+            // (This would be more sophisticated with velocity tracking)
+            const tilt = ((planeX / gameContainer.clientWidth) - 0.5) * 30;
+            planeElement.style.transform = `rotate(${tilt}deg)`;
+        }
+        
+        // Spawn a new cloud
+        function spawnCloud() {
+            if (!gameRunning) return;
+            
+            const cloud = document.createElement('div');
+            cloud.className = 'cloud';
+            
+            // Random size
+            const size = Math.random() * 60 + 40;
+            cloud.style.width = size + 'px';
+            cloud.style.height = size + 'px';
+            
+            // Random position (off screen to the right)
+            const yPos = Math.random() * (gameContainer.clientHeight - size);
+            cloud.style.left = gameContainer.clientWidth + 'px';
+            cloud.style.top = yPos + 'px';
+            
+            gameContainer.appendChild(cloud);
+            clouds.push({
+                element: cloud,
+                x: gameContainer.clientWidth,
+                y: yPos,
+                width: size,
+                height: size,
+                speed: Math.random() * 2 + gameSpeed
+            });
+        }
+        
+        // Move all clouds
+        function moveClouds() {
+            for (let i = clouds.length - 1; i >= 0; i--) {
+                const cloud = clouds[i];
+                cloud.x -= cloud.speed;
+                cloud.element.style.left = cloud.x + 'px';
+                
+                // Remove if off screen
+                if (cloud.x + cloud.width < 0) {
+                    gameContainer.removeChild(cloud.element);
+                    clouds.splice(i, 1);
+                }
+            }
+        }
+        
+        // Spawn a new star
+        function spawnStar() {
+            if (!gameRunning) return;
+            
+            const star = document.createElement('div');
+            star.className = 'star';
+            
+            // Random position (off screen to the right)
+            const yPos = Math.random() * (gameContainer.clientHeight - 30);
+            star.style.left = gameContainer.clientWidth + 'px';
+            star.style.top = yPos + 'px';
+            
+            gameContainer.appendChild(star);
+            stars.push({
+                element: star,
+                x: gameContainer.clientWidth,
+                y: yPos,
+                width: 30,
+                height: 30,
+                speed: gameSpeed + 1
+            });
+        }
+        
+        // Move all stars
+        function moveStars() {
+            for (let i = stars.length - 1; i >= 0; i--) {
+                const star = stars[i];
+                star.x -= star.speed;
+                star.element.style.left = star.x + 'px';
+                
+                // Remove if off screen
+                if (star.x + star.width < 0) {
+                    gameContainer.removeChild(star.element);
+                    stars.splice(i, 1);
+                }
+            }
+        }
+        
+        // Check for collisions
+        function checkCollisions() {
+            // Plane dimensions
+            const planeSize = 40;
+            const planeLeft = planeX - planeSize/2;
+            const planeRight = planeX + planeSize/2;
+            const planeTop = planeY - planeSize/2;
+            const planeBottom = planeY + planeSize/2;
+            
+            // Check cloud collisions
+            for (const cloud of clouds) {
+                if (planeRight > cloud.x && 
+                    planeLeft < cloud.x + cloud.width && 
+                    planeBottom > cloud.y && 
+                    planeTop < cloud.y + cloud.height) {
+                    gameOver();
+                    return;
+                }
+            }
+            
+            // Check star collisions
+            for (let i = stars.length - 1; i >= 0; i--) {
+                const star = stars[i];
+                if (planeRight > star.x && 
+                    planeLeft < star.x + star.width && 
+                    planeBottom > star.y && 
+                    planeTop < star.y + star.height) {
+                    // Collect star
+                    gameContainer.removeChild(star.element);
+                    stars.splice(i, 1);
+                    score += 5;
+                    updateScore();
+                    
+                    // Play sound
+                    playSound('collect');
+                }
+            }
+        }
+        
+        // Update score display
+        function updateScore() {
+            scoreElement.textContent = score;
+        }
+        
+        // Game over
+        function gameOver() {
+            gameRunning = false;
+            cancelAnimationFrame(animationId);
+            
+            // Update high score
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('highScore', highScore);
+                document.getElementById('high-score').textContent = highScore;
+            }
+            
+            // Show game over screen
+            finalScoreElement.textContent = score;
+            gameOverScreen.style.display = 'flex';
+            
+            // Play sound
+            playSound('crash');
+        }
+        
+        // Restart game
+        function restartGame() {
+            gameOverScreen.style.display = 'none';
+            startGame();
+        }
+        
+        // Clear game elements
+        function clearGameElements() {
+            // Remove all clouds
+            for (const cloud of clouds) {
+                gameContainer.removeChild(cloud.element);
+            }
+            clouds = [];
+            
+            // Remove all stars
+            for (const star of stars) {
+                gameContainer.removeChild(star.element);
+            }
+            stars = [];
+        }
+        
+        // Simple sound effects
+        function playSound(type) {
+            const audio = new Audio();
+            if (type === 'collect') {
+                audio.src = 'data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU...'; // Short beep
+            } else if (type === 'crash') {
+                audio.src = 'data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU...'; // Crash sound
+            }
+            audio.volume = 0.2;
+            audio.play().catch(e => console.log("Audio play failed:", e));
+        }
+        
+        // Initialize when loaded
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
