@@ -1,0 +1,1244 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knight's Quest</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap');
+        
+        body {
+            font-family: 'MedievalSharp', cursive;
+            overflow: hidden;
+            background-color: #1a1a2e;
+            touch-action: none;
+        }
+        
+        #gameCanvas {
+            display: block;
+            margin: 0 auto;
+            background-color: #16213e;
+        }
+        
+        #gameUI {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px black;
+        }
+        
+        #startScreen, #levelCompleteScreen, #gameOverScreen, #victoryScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            font-size: 24px;
+            text-align: center;
+        }
+        
+        .btn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #4a148c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-family: 'MedievalSharp', cursive;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background-color: #7b1fa2;
+            transform: scale(1.05);
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            color: white;
+            user-select: none;
+        }
+        
+        #attackBtn {
+            background-color: rgba(255, 0, 0, 0.5);
+        }
+        
+        #shieldBtn {
+            background-color: rgba(0, 0, 255, 0.5);
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="1000" height="500"></canvas>
+    
+    <div id="gameUI">
+        <div>Level: <span id="levelDisplay">1</span></div>
+        <div>Health: <span id="healthDisplay">100</span></div>
+        <div>Score: <span id="scoreDisplay">0</span></div>
+    </div>
+    
+    <div id="startScreen">
+        <h1 class="text-4xl mb-4">Knight's Quest</h1>
+        <p class="text-xl mb-8">Rescue the princess from the evil wolves!</p>
+        <button id="startBtn" class="btn">Start Adventure</button>
+        <div class="mt-8 text-sm">
+            <p>Controls:</p>
+            <p>Arrow Keys or WASD to move</p>
+            <p>Left Click or Tap to attack</p>
+            <p>'C' key or Shield Button to defend</p>
+        </div>
+    </div>
+    
+    <div id="levelCompleteScreen" class="hidden">
+        <h1 class="text-4xl mb-4">Level Complete!</h1>
+        <p class="text-xl mb-8">Prepare for the next challenge...</p>
+        <button id="nextLevelBtn" class="btn">Continue</button>
+    </div>
+    
+    <div id="gameOverScreen" class="hidden">
+        <h1 class="text-4xl mb-4">Game Over</h1>
+        <p class="text-xl mb-8">The wolves were too strong...</p>
+        <button id="restartBtn" class="btn">Try Again</button>
+    </div>
+    
+    <div id="victoryScreen" class="hidden">
+        <h1 class="text-4xl mb-4">Victory!</h1>
+        <p class="text-xl mb-8">You've rescued the princess!</p>
+        <button id="playAgainBtn" class="btn">Play Again</button>
+    </div>
+    
+    <div id="controls">
+        <div class="control-btn" id="leftBtn">←</div>
+        <div class="control-btn" id="rightBtn">→</div>
+        <div class="control-btn" id="jumpBtn">↑</div>
+        <div class="control-btn" id="attackBtn">⚔️</div>
+        <div class="control-btn" id="shieldBtn">🛡️</div>
+    </div>
+    
+    <script>
+        // Game variables
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('startScreen');
+        const levelCompleteScreen = document.getElementById('levelCompleteScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const victoryScreen = document.getElementById('victoryScreen');
+        const levelDisplay = document.getElementById('levelDisplay');
+        const healthDisplay = document.getElementById('healthDisplay');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        
+        // Game state
+        let gameRunning = false;
+        let currentLevel = 1;
+        let playerHealth = 100;
+        let score = 0;
+        let player = null;
+        let platforms = [];
+        let enemies = [];
+        let items = [];
+        let goal = null;
+        let princess = null;
+        let gameTime = 0;
+        let isShielding = false;
+        let shieldCooldown = 0;
+        
+        // Images
+        const images = {
+            knight: null,
+            knightAttack: null,
+            knightShield: null,
+            wolf: null,
+            wolfAngry: null,
+            platform: null,
+            tower: null,
+            princess: null,
+            heart: null
+        };
+        
+        // Load images
+        function loadImages() {
+            images.knight = new Image();
+            images.knight.src = 'https://cdn.gamedevmarket.net/wp-content/uploads/20191203165907/ea63830adf5ccd77d6f984789f0b4417.gif';
+            
+            images.knightAttack = new Image();
+            images.knightAttack.src = 'https://muskingumlibrary.libnet.info/images/events/muskingumlibrary/ninjagif.gif';
+            
+            images.knightShield = new Image();
+            images.knightShield.src = 'https://www.fightersgeneration.com/characters/hanzo-fireblast.gif';
+            
+            images.wolf = new Image();
+            images.wolf.src = 'https://parallel-innovations.com/wp-content/uploads/2023/02/ninja.gif';
+            
+            images.wolfAngry = new Image();
+            images.wolfAngry.src = 'https://i.imgur.com/MY3vQ6T.png';
+            
+            images.platform = new Image();
+            images.platform.src = 'https://cdn.dribbble.com/userupload/41651691/file/original-c87d1ef89ad642c12ea095dfaef3f306.gif';
+            
+            images.tower = new Image();
+            images.tower.src = 'https://static.vecteezy.com/system/resources/thumbnails/056/169/099/small_2x/japanese-pagoda-temple-png.png';
+            
+            images.princess = new Image();
+            images.princess.src = 'https://i.pinimg.com/originals/f8/ea/8e/f8ea8eea99262e737651dae8d52e2e3d.gif';
+            
+            images.heart = new Image();
+            images.heart.src = 'https://upload.wikimedia.org/wikipedia/commons/2/2f/Beating_Heart.gif';
+        }
+        
+        // Player class
+        class Player {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = 50;
+                this.height = 80;
+                this.velocityX = 0;
+                this.velocityY = 0;
+                this.speed = 5;
+                this.jumpForce = -15;
+                this.isJumping = false;
+                this.isAttacking = false;
+                this.attackCooldown = 0;
+                this.attackRange = 70;
+                this.direction = 1; // 1 for right, -1 for left
+                this.health = 100;
+                this.maxHealth = 100;
+                this.invincible = 0;
+                this.attackDamage = 20;
+            }
+            
+            update() {
+                // Apply gravity
+                this.velocityY += 0.8;
+                
+                // Update position
+                this.x += this.velocityX;
+                this.y += this.velocityY;
+                
+                // Screen boundaries
+                if (this.x < 0) this.x = 0;
+                if (this.x > canvas.width - this.width) this.x = canvas.width - this.width;
+                
+                // Platform collision
+                let onGround = false;
+                for (const platform of platforms) {
+                    if (
+                        this.x < platform.x + platform.width &&
+                        this.x + this.width > platform.x &&
+                        this.y < platform.y + platform.height &&
+                        this.y + this.height > platform.y
+                    ) {
+                        // Landing on top of platform
+                        if (this.velocityY > 0 && this.y + this.height < platform.y + platform.height) {
+                            this.y = platform.y - this.height;
+                            this.velocityY = 0;
+                            onGround = true;
+                            this.isJumping = false;
+                        }
+                        // Hitting platform from below
+                        else if (this.velocityY < 0) {
+                            this.y = platform.y + platform.height;
+                            this.velocityY = 0;
+                        }
+                        // Hitting platform from the side
+                        else if (this.velocityX > 0) {
+                            this.x = platform.x - this.width;
+                            this.velocityX = 0;
+                        }
+                        else if (this.velocityX < 0) {
+                            this.x = platform.x + platform.width;
+                            this.velocityX = 0;
+                        }
+                    }
+                }
+                
+                // Reset jumping if on ground
+                if (onGround) {
+                    this.isJumping = false;
+                }
+                
+                // Attack cooldown
+                if (this.isAttacking) {
+                    this.attackCooldown++;
+                    if (this.attackCooldown > 15) {
+                        this.isAttacking = false;
+                        this.attackCooldown = 0;
+                    }
+                }
+                
+                // Invincibility frames
+                if (this.invincible > 0) {
+                    this.invincible--;
+                }
+                
+                // Check if fell off the screen
+                if (this.y > canvas.height) {
+                    takeDamage(30);
+                    this.y = 50;
+                    this.x = 50;
+                    this.velocityY = 0;
+                }
+            }
+            
+            draw() {
+                // Draw player with direction and action
+                if (isShielding) {
+                    ctx.save();
+                    ctx.scale(this.direction, 1);
+                    ctx.drawImage(
+                        images.knightShield,
+                        this.direction === 1 ? this.x : -this.x - this.width,
+                        this.y,
+                        this.width,
+                        this.height
+                    );
+                    ctx.restore();
+                }
+                else if (this.isAttacking) {
+                    ctx.save();
+                    ctx.scale(this.direction, 1);
+                    ctx.drawImage(
+                        images.knightAttack,
+                        this.direction === 1 ? this.x : -this.x - this.width,
+                        this.y,
+                        this.width,
+                        this.height
+                    );
+                    ctx.restore();
+                }
+                else {
+                    ctx.save();
+                    ctx.scale(this.direction, 1);
+                    ctx.drawImage(
+                        images.knight,
+                        this.direction === 1 ? this.x : -this.x - this.width,
+                        this.y,
+                        this.width,
+                        this.height
+                    );
+                    ctx.restore();
+                }
+                
+                // Draw health bar
+                const healthBarWidth = 50;
+                const healthPercentage = this.health / this.maxHealth;
+                
+                ctx.fillStyle = 'red';
+                ctx.fillRect(this.x, this.y - 15, healthBarWidth, 5);
+                
+                ctx.fillStyle = 'green';
+                ctx.fillRect(this.x, this.y - 15, healthBarWidth * healthPercentage, 5);
+                
+                // Draw invincibility effect
+                if (this.invincible > 0 && this.invincible % 5 < 3) {
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(this.x - 2, this.y - 2, this.width + 4, this.height + 4);
+                }
+            }
+            
+            jump() {
+                if (!this.isJumping) {
+                    this.velocityY = this.jumpForce;
+                    this.isJumping = true;
+                }
+            }
+            
+            attack() {
+                if (!this.isAttacking) {
+                    this.isAttacking = true;
+                    
+                    // Check for enemy hits
+                    for (const enemy of enemies) {
+                        const attackX = this.direction === 1 ? this.x + this.width : this.x - this.attackRange;
+                        const attackWidth = this.attackRange;
+                        
+                        if (
+                            attackX < enemy.x + enemy.width &&
+                            attackX + attackWidth > enemy.x &&
+                            this.y < enemy.y + enemy.height &&
+                            this.y + this.height > enemy.y
+                        ) {
+                            enemy.takeDamage(this.attackDamage);
+                            if (enemy.health <= 0) {
+                                score += 50 * currentLevel;
+                                scoreDisplay.textContent = score;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            takeDamage(amount) {
+                if (this.invincible === 0 && !isShielding) {
+                    this.health -= amount;
+                    healthDisplay.textContent = this.health;
+                    this.invincible = 60; // 1 second invincibility
+                    
+                    if (this.health <= 0) {
+                        gameOver();
+                    }
+                }
+            }
+        }
+        
+        // Platform class
+        class Platform {
+            constructor(x, y, width, height, isMoving = false, moveDistance = 0, moveSpeed = 0) {
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+                this.isMoving = isMoving;
+                this.moveDistance = moveDistance;
+                this.moveSpeed = moveSpeed;
+                this.originalX = x;
+                this.direction = 1;
+            }
+            
+            update() {
+                if (this.isMoving) {
+                    this.x += this.moveSpeed * this.direction;
+                    
+                    if (Math.abs(this.x - this.originalX) > this.moveDistance) {
+                        this.direction *= -1;
+                    }
+                }
+            }
+            
+            draw() {
+                // Draw platform with repeating texture
+                const patternWidth = 50;
+                const patternHeight = 20;
+                const repeatX = Math.ceil(this.width / patternWidth);
+                
+                for (let i = 0; i < repeatX; i++) {
+                    ctx.drawImage(
+                        images.platform,
+                        this.x + i * patternWidth,
+                        this.y,
+                        patternWidth,
+                        this.height
+                    );
+                }
+            }
+        }
+        
+        // Enemy class
+        class Enemy {
+            constructor(x, y, type = 'wolf') {
+                this.x = x;
+                this.y = y;
+                this.width = 60;
+                this.height = 40;
+                this.velocityX = 0;
+                this.velocityY = 0;
+                this.speed = 1 + (currentLevel * 0.2);
+                this.type = type;
+                this.health = 30 + (currentLevel * 10);
+                this.maxHealth = this.health;
+                this.direction = Math.random() > 0.5 ? 1 : -1;
+                this.attackCooldown = 0;
+                this.damage = 10 + (currentLevel * 2);
+                this.isAngry = false;
+                this.changeDirectionTimer = 0;
+            }
+            
+            update() {
+                // Simple AI: move back and forth, change direction occasionally
+                this.velocityX = this.speed * this.direction;
+                
+                this.changeDirectionTimer++;
+                if (this.changeDirectionTimer > 120) {
+                    this.direction *= -1;
+                    this.changeDirectionTimer = 0;
+                }
+                
+                // Apply gravity
+                this.velocityY += 0.8;
+                
+                // Update position
+                this.x += this.velocityX;
+                this.y += this.velocityY;
+                
+                // Screen boundaries
+                if (this.x < 0) {
+                    this.x = 0;
+                    this.direction = 1;
+                }
+                if (this.x > canvas.width - this.width) {
+                    this.x = canvas.width - this.width;
+                    this.direction = -1;
+                }
+                
+                // Platform collision
+                for (const platform of platforms) {
+                    if (
+                        this.x < platform.x + platform.width &&
+                        this.x + this.width > platform.x &&
+                        this.y < platform.y + platform.height &&
+                        this.y + this.height > platform.y
+                    ) {
+                        // Landing on top of platform
+                        if (this.velocityY > 0 && this.y + this.height < platform.y + platform.height) {
+                            this.y = platform.y - this.height;
+                            this.velocityY = 0;
+                        }
+                        // Hitting platform from below
+                        else if (this.velocityY < 0) {
+                            this.y = platform.y + platform.height;
+                            this.velocityY = 0;
+                        }
+                        // Hitting platform from the side
+                        else if (this.velocityX > 0) {
+                            this.x = platform.x - this.width;
+                            this.direction = -1;
+                            this.velocityX = 0;
+                        }
+                        else if (this.velocityX < 0) {
+                            this.x = platform.x + platform.width;
+                            this.direction = 1;
+                            this.velocityX = 0;
+                        }
+                    }
+                }
+                
+                // Attack player if close
+                if (player && this.attackCooldown <= 0) {
+                    const distanceX = Math.abs(this.x - player.x);
+                    const distanceY = Math.abs(this.y - player.y);
+                    
+                    if (distanceX < 60 && distanceY < 60) {
+                        player.takeDamage(this.damage);
+                        this.attackCooldown = 60; // 1 second cooldown
+                    }
+                }
+                
+                if (this.attackCooldown > 0) {
+                    this.attackCooldown--;
+                }
+                
+                // Become angry at low health
+                this.isAngry = this.health < this.maxHealth * 0.5;
+                if (this.isAngry) {
+                    this.speed = (1 + (currentLevel * 0.2)) * 1.5;
+                    this.damage = (10 + (currentLevel * 2)) * 1.2;
+                }
+            }
+            
+            draw() {
+                // Draw enemy
+                ctx.save();
+                ctx.scale(this.direction, 1);
+                
+                if (this.isAngry) {
+                    ctx.drawImage(
+                        images.wolfAngry,
+                        this.direction === 1 ? this.x : -this.x - this.width,
+                        this.y,
+                        this.width,
+                        this.height
+                    );
+                } else {
+                    ctx.drawImage(
+                        images.wolf,
+                        this.direction === 1 ? this.x : -this.x - this.width,
+                        this.y,
+                        this.width,
+                        this.height
+                    );
+                }
+                
+                ctx.restore();
+                
+                // Draw health bar
+                const healthBarWidth = 40;
+                const healthPercentage = this.health / this.maxHealth;
+                
+                ctx.fillStyle = 'red';
+                ctx.fillRect(this.x + (this.width - healthBarWidth) / 2, this.y - 10, healthBarWidth, 5);
+                
+                ctx.fillStyle = 'green';
+                ctx.fillRect(this.x + (this.width - healthBarWidth) / 2, this.y - 10, healthBarWidth * healthPercentage, 5);
+            }
+            
+            takeDamage(amount) {
+                this.health -= amount;
+                
+                // Make enemy face player when hit
+                if (player) {
+                    this.direction = player.x > this.x ? -1 : 1;
+                }
+                
+                return this.health <= 0;
+            }
+        }
+        
+        // Item class (health pickup)
+        class Item {
+            constructor(x, y, type = 'health') {
+                this.x = x;
+                this.y = y;
+                this.width = 30;
+                this.height = 30;
+                this.type = type;
+                this.collected = false;
+            }
+            
+            update() {
+                // Check collision with player
+                if (!this.collected && player &&
+                    this.x < player.x + player.width &&
+                    this.x + this.width > player.x &&
+                    this.y < player.y + player.height &&
+                    this.y + this.height > player.y
+                ) {
+                    this.collected = true;
+                    
+                    if (this.type === 'health') {
+                        player.health = Math.min(player.maxHealth, player.health + 30);
+                        healthDisplay.textContent = player.health;
+                        score += 20;
+                        scoreDisplay.textContent = score;
+                    }
+                }
+            }
+            
+            draw() {
+                if (!this.collected) {
+                    if (this.type === 'health') {
+                        ctx.drawImage(images.heart, this.x, this.y, this.width, this.height);
+                    }
+                }
+            }
+        }
+        
+        // Goal class (tower)
+        class Goal {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = 100;
+                this.height = 200;
+            }
+            
+            update() {
+                // Check collision with player
+                if (player &&
+                    this.x < player.x + player.width &&
+                    this.x + this.width > player.x &&
+                    this.y < player.y + player.height &&
+                    this.y + this.height > player.y
+                ) {
+                    if (currentLevel < 10) {
+                        levelComplete();
+                    } else {
+                        victory();
+                    }
+                }
+            }
+            
+            draw() {
+                ctx.drawImage(images.tower, this.x, this.y, this.width, this.height);
+                
+                // Draw princess in tower window
+                if (currentLevel === 10) {
+                    ctx.drawImage(images.princess, this.x + 25, this.y + 50, 50, 70);
+                }
+            }
+        }
+        
+        // Initialize game
+        function initGame() {
+            loadImages();
+            setupControls();
+            resetGame();
+            
+            // Start screen buttons
+            document.getElementById('startBtn').addEventListener('click', startGame);
+            document.getElementById('nextLevelBtn').addEventListener('click', nextLevel);
+            document.getElementById('restartBtn').addEventListener('click', restartGame);
+            document.getElementById('playAgainBtn').addEventListener('click', restartGame);
+            
+            // Start game loop
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Setup controls
+        function setupControls() {
+            // Keyboard controls
+            const keys = {
+                ArrowLeft: false,
+                ArrowRight: false,
+                ArrowUp: false,
+                KeyA: false,
+                KeyD: false,
+                KeyW: false,
+                KeyC: false
+            };
+            
+            document.addEventListener('keydown', (e) => {
+                if (e.code in keys) {
+                    keys[e.code] = true;
+                    
+                    // Jump
+                    if ((e.code === 'ArrowUp' || e.code === 'KeyW') && gameRunning) {
+                        player.jump();
+                    }
+                    
+                    // Shield
+                    if (e.code === 'KeyC' && gameRunning) {
+                        isShielding = true;
+                    }
+                }
+            });
+            
+            document.addEventListener('keyup', (e) => {
+                if (e.code in keys) {
+                    keys[e.code] = false;
+                    
+                    // Shield
+                    if (e.code === 'KeyC' && gameRunning) {
+                        isShielding = false;
+                    }
+                }
+            });
+            
+            // Mouse controls
+            canvas.addEventListener('mousedown', (e) => {
+                if (gameRunning) {
+                    player.attack();
+                }
+            });
+            
+            // Touch controls
+            document.getElementById('leftBtn').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                keys.ArrowLeft = true;
+                keys.KeyA = true;
+            });
+            
+            document.getElementById('leftBtn').addEventListener('touchend', (e) => {
+                e.preventDefault();
+                keys.ArrowLeft = false;
+                keys.KeyA = false;
+            });
+            
+            document.getElementById('rightBtn').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                keys.ArrowRight = true;
+                keys.KeyD = true;
+            });
+            
+            document.getElementById('rightBtn').addEventListener('touchend', (e) => {
+                e.preventDefault();
+                keys.ArrowRight = false;
+                keys.KeyD = false;
+            });
+            
+            document.getElementById('jumpBtn').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (gameRunning) player.jump();
+            });
+            
+            document.getElementById('attackBtn').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (gameRunning) player.attack();
+            });
+            
+            document.getElementById('shieldBtn').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (gameRunning) isShielding = true;
+            });
+            
+            document.getElementById('shieldBtn').addEventListener('touchend', (e) => {
+                e.preventDefault();
+                if (gameRunning) isShielding = false;
+            });
+            
+            // Update player movement based on keys
+            function updateMovement() {
+                if (player) {
+                    if (keys.ArrowLeft || keys.KeyA) {
+                        player.velocityX = -player.speed;
+                        player.direction = -1;
+                    } else if (keys.ArrowRight || keys.KeyD) {
+                        player.velocityX = player.speed;
+                        player.direction = 1;
+                    } else {
+                        player.velocityX = 0;
+                    }
+                }
+                
+                requestAnimationFrame(updateMovement);
+            }
+            
+            updateMovement();
+        }
+        
+        // Game loop
+        function gameLoop(timestamp) {
+            if (gameRunning) {
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw background
+                drawBackground();
+                
+                // Update game time
+                gameTime++;
+                
+                // Update and draw all game objects
+                player.update();
+                player.draw();
+                
+                platforms.forEach(platform => {
+                    platform.update();
+                    platform.draw();
+                });
+                
+                enemies.forEach(enemy => {
+                    enemy.update();
+                    enemy.draw();
+                });
+                
+                items.forEach(item => {
+                    item.update();
+                    item.draw();
+                });
+                
+                if (goal) {
+                    goal.update();
+                    goal.draw();
+                }
+                
+                // Shield cooldown
+                if (shieldCooldown > 0) {
+                    shieldCooldown--;
+                }
+                
+                // Draw shield effect if active
+                if (isShielding && shieldCooldown === 0) {
+                    ctx.strokeStyle = 'rgba(0, 100, 255, 0.5)';
+                    ctx.lineWidth = 5;
+                    ctx.beginPath();
+                    ctx.arc(
+                        player.x + player.width / 2,
+                        player.y + player.height / 2,
+                        player.width + 10,
+                        0,
+                        Math.PI * 2
+                    );
+                    ctx.stroke();
+                }
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Draw background
+        function drawBackground() {
+            // Gradient background
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#16213e');
+            gradient.addColorStop(1, '#1a1a2e');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Stars
+            ctx.fillStyle = 'white';
+            for (let i = 0; i < 50; i++) {
+                const x = (i * 12345) % canvas.width;
+                const y = (i * 54321) % canvas.height;
+                const size = (i % 3) + 1;
+                
+                if (gameTime % 60 < 30 && i % 4 === 0) {
+                    // Twinkle some stars
+                    ctx.globalAlpha = 0.3 + Math.random() * 0.7;
+                }
+                
+                ctx.fillRect(x, y, size, size);
+                ctx.globalAlpha = 1;
+            }
+            
+            // Moon
+            ctx.fillStyle = '#f5f5dc';
+            ctx.beginPath();
+            ctx.arc(canvas.width - 100, 100, 40, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Start game
+        function startGame() {
+            startScreen.classList.add('hidden');
+            gameRunning = true;
+            resetLevel();
+        }
+        
+        // Reset game
+        function resetGame() {
+            currentLevel = 1;
+            score = 0;
+            playerHealth = 100;
+            levelDisplay.textContent = currentLevel;
+            scoreDisplay.textContent = score;
+            healthDisplay.textContent = playerHealth;
+        }
+        
+        // Reset level
+        function resetLevel() {
+            // Create player
+            player = new Player(50, 50);
+            player.health = playerHealth;
+            
+            // Clear arrays
+            platforms = [];
+            enemies = [];
+            items = [];
+            
+            // Create platforms based on level
+            createLevel(currentLevel);
+            
+            // Create goal (tower)
+            goal = new Goal(canvas.width - 150, canvas.height - 250);
+        }
+        
+        // Create level
+        function createLevel(level) {
+            // Ground platform
+            platforms.push(new Platform(0, canvas.height - 20, canvas.width, 20));
+            
+            // Level-specific platforms
+            switch (level) {
+                case 1:
+                    // Simple level with a few platforms
+                    platforms.push(new Platform(200, 400, 150, 20));
+                    platforms.push(new Platform(450, 300, 150, 20));
+                    platforms.push(new Platform(200, 200, 150, 20));
+                    
+                    // 2 easy wolves
+                    enemies.push(new Enemy(300, canvas.height - 80));
+                    enemies.push(new Enemy(500, 280));
+                    break;
+                    
+                case 2:
+                    // More platforms, some moving
+                    platforms.push(new Platform(200, 400, 100, 20, true, 200, 1));
+                    platforms.push(new Platform(450, 350, 100, 20));
+                    platforms.push(new Platform(300, 250, 100, 20, true, 150, 1.5));
+                    platforms.push(new Platform(550, 200, 100, 20));
+                    
+                    // 3 wolves
+                    enemies.push(new Enemy(250, canvas.height - 80));
+                    enemies.push(new Enemy(500, 330));
+                    enemies.push(new Enemy(350, 230));
+                    
+                    // Health pickup
+                    items.push(new Item(600, 170));
+                    break;
+                    
+                case 3:
+                    // More complex with gaps
+                    platforms.push(new Platform(200, 400, 100, 20));
+                    platforms.push(new Platform(350, 400, 100, 20));
+                    platforms.push(new Platform(500, 400, 100, 20));
+                    platforms.push(new Platform(650, 350, 100, 20));
+                    platforms.push(new Platform(500, 250, 100, 20, true, 200, 2));
+                    platforms.push(new Platform(300, 200, 100, 20));
+                    
+                    // 4 wolves, some on moving platforms
+                    enemies.push(new Enemy(220, canvas.height - 80));
+                    enemies.push(new Enemy(370, canvas.height - 80));
+                    enemies.push(new Enemy(520, canvas.height - 80));
+                    enemies.push(new Enemy(300, 180));
+                    
+                    // Health pickup
+                    items.push(new Item(700, 320));
+                    break;
+                    
+                case 4:
+                    // Vertical challenge
+                    platforms.push(new Platform(200, 450, 100, 20));
+                    platforms.push(new Platform(350, 400, 100, 20));
+                    platforms.push(new Platform(200, 350, 100, 20));
+                    platforms.push(new Platform(350, 300, 100, 20));
+                    platforms.push(new Platform(200, 250, 100, 20));
+                    platforms.push(new Platform(350, 200, 100, 20));
+                    platforms.push(new Platform(500, 150, 100, 20));
+                    
+                    // 5 wolves
+                    enemies.push(new Enemy(220, 430));
+                    enemies.push(new Enemy(370, 380));
+                    enemies.push(new Enemy(220, 330));
+                    enemies.push(new Enemy(370, 280));
+                    enemies.push(new Enemy(220, 230));
+                    
+                    // Health pickup
+                    items.push(new Item(520, 130));
+                    break;
+                    
+                case 5:
+                    // Maze-like with moving platforms
+                    platforms.push(new Platform(100, 450, 100, 20));
+                    platforms.push(new Platform(250, 400, 100, 20, true, 150, 1.5));
+                    platforms.push(new Platform(400, 350, 100, 20));
+                    platforms.push(new Platform(550, 300, 100, 20, true, 200, 2));
+                    platforms.push(new Platform(400, 250, 100, 20));
+                    platforms.push(new Platform(250, 200, 100, 20, true, 150, 1.5));
+                    platforms.push(new Platform(100, 150, 100, 20));
+                    
+                    // 6 wolves
+                    enemies.push(new Enemy(120, 430));
+                    enemies.push(new Enemy(400, 330));
+                    enemies.push(new Enemy(400, 230));
+                    enemies.push(new Enemy(120, 130));
+                    enemies.push(new Enemy(550, 280));
+                    enemies.push(new Enemy(250, 180));
+                    
+                    // Health pickups
+                    items.push(new Item(420, 330));
+                    items.push(new Item(120, 130));
+                    break;
+                    
+                case 6:
+                    // Complex with many moving parts
+                    platforms.push(new Platform(100, 450, 80, 20, true, 200, 2));
+                    platforms.push(new Platform(350, 450, 80, 20, true, 200, 1.5));
+                    platforms.push(new Platform(600, 450, 80, 20, true, 200, 1));
+                    
+                    platforms.push(new Platform(100, 350, 80, 20, true, 300, 1.5));
+                    platforms.push(new Platform(450, 350, 80, 20, true, 300, 2));
+                    
+                    platforms.push(new Platform(200, 250, 80, 20, true, 150, 2.5));
+                    platforms.push(new Platform(500, 250, 80, 20, true, 150, 2));
+                    
+                    platforms.push(new Platform(300, 150, 80, 20, true, 100, 3));
+                    
+                    // 7 wolves
+                    enemies.push(new Enemy(120, 430));
+                    enemies.push(new Enemy(370, 430));
+                    enemies.push(new Enemy(620, 430));
+                    enemies.push(new Enemy(120, 330));
+                    enemies.push(new Enemy(470, 330));
+                    enemies.push(new Enemy(220, 230));
+                    enemies.push(new Enemy(520, 230));
+                    
+                    // Health pickup
+                    items.push(new Item(320, 130));
+                    break;
+                    
+                case 7:
+                    // Vertical maze with many enemies
+                    platforms.push(new Platform(100, 450, 60, 20));
+                    platforms.push(new Platform(200, 400, 60, 20));
+                    platforms.push(new Platform(100, 350, 60, 20));
+                    platforms.push(new Platform(200, 300, 60, 20));
+                    platforms.push(new Platform(100, 250, 60, 20));
+                    platforms.push(new Platform(200, 200, 60, 20));
+                    platforms.push(new Platform(100, 150, 60, 20));
+                    
+                    platforms.push(new Platform(300, 450, 60, 20));
+                    platforms.push(new Platform(400, 400, 60, 20));
+                    platforms.push(new Platform(300, 350, 60, 20));
+                    platforms.push(new Platform(400, 300, 60, 20));
+                    platforms.push(new Platform(300, 250, 60, 20));
+                    platforms.push(new Platform(400, 200, 60, 20));
+                    platforms.push(new Platform(300, 150, 60, 20));
+                    
+                    platforms.push(new Platform(500, 450, 60, 20));
+                    platforms.push(new Platform(600, 400, 60, 20));
+                    platforms.push(new Platform(500, 350, 60, 20));
+                    platforms.push(new Platform(600, 300, 60, 20));
+                    platforms.push(new Platform(500, 250, 60, 20));
+                    platforms.push(new Platform(600, 200, 60, 20));
+                    platforms.push(new Platform(500, 150, 60, 20));
+                    
+                    // 8 wolves
+                    enemies.push(new Enemy(120, 430));
+                    enemies.push(new Enemy(220, 380));
+                    enemies.push(new Enemy(120, 330));
+                    enemies.push(new Enemy(220, 280));
+                    enemies.push(new Enemy(320, 430));
+                    enemies.push(new Enemy(420, 380));
+                    enemies.push(new Enemy(520, 430));
+                    enemies.push(new Enemy(620, 380));
+                    
+                    // Health pickups
+                    items.push(new Item(120, 130));
+                    items.push(new Item(320, 130));
+                    items.push(new Item(520, 130));
+                    break;
+                    
+                case 8:
+                    // Complex with many moving platforms and enemies
+                    platforms.push(new Platform(100, 450, 70, 20, true, 300, 2));
+                    platforms.push(new Platform(400, 450, 70, 20, true, 300, 1.5));
+                    
+                    platforms.push(new Platform(100, 350, 70, 20, true, 200, 2.5));
+                    platforms.push(new Platform(350, 350, 70, 20, true, 200, 2));
+                    platforms.push(new Platform(600, 350, 70, 20, true, 200, 1.5));
+                    
+                    platforms.push(new Platform(200, 250, 70, 20, true, 150, 3));
+                    platforms.push(new Platform(450, 250, 70, 20, true, 150, 2.5));
+                    
+                    platforms.push(new Platform(300, 150, 70, 20, true, 100, 3.5));
+                    
+                    // 9 wolves
+                    enemies.push(new Enemy(120, 430));
+                    enemies.push(new Enemy(420, 430));
+                    enemies.push(new Enemy(120, 330));
+                    enemies.push(new Enemy(370, 330));
+                    enemies.push(new Enemy(620, 330));
+                    enemies.push(new Enemy(220, 230));
+                    enemies.push(new Enemy(470, 230));
+                    enemies.push(new Enemy(320, 130));
+                    enemies.push(new Enemy(500, 100));
+                    
+                    // Health pickups
+                    items.push(new Item(320, 120));
+                    items.push(new Item(600, 100));
+                    break;
+                    
+                case 9:
+                    // Very challenging with many enemies and complex platforms
+                    platforms.push(new Platform(50, 450, 60, 20, true, 400, 3));
+                    platforms.push(new Platform(150, 400, 60, 20, true, 300, 2.5));
+                    platforms.push(new Platform(250, 350, 60, 20, true, 200, 2));
+                    platforms.push(new Platform(350, 300, 60, 20, true, 100, 1.5));
+                    platforms.push(new Platform(450, 250, 60, 20, true, 200, 2));
+                    platforms.push(new Platform(550, 200, 60, 20, true, 300, 2.5));
+                    platforms.push(new Platform(650, 150, 60, 20, true, 400, 3));
+                    
+                    platforms.push(new Platform(350, 150, 60, 20));
+                    
+                    // 10 wolves
+                    enemies.push(new Enemy(70, 430));
+                    enemies.push(new Enemy(170, 380));
+                    enemies.push(new Enemy(270, 330));
+                    enemies.push(new Enemy(370, 280));
+                    enemies.push(new Enemy(470, 230));
+                    enemies.push(new Enemy(570, 180));
+                    enemies.push(new Enemy(670, 130));
+                    enemies.push(new Enemy(370, 130));
+                    enemies.push(new Enemy(200, 200));
+                    enemies.push(new Enemy(500, 100));
+                    
+                    // Health pickups
+                    items.push(new Item(370, 120));
+                    items.push(new Item(600, 80));
+                    break;
+                    
+                case 10:
+                    // Final level with princess in tower
+                    platforms.push(new Platform(0, 450, 100, 20));
+                    platforms.push(new Platform(150, 400, 100, 20));
+                    platforms.push(new Platform(300, 350, 100, 20));
+                    platforms.push(new Platform(450, 300, 100, 20));
+                    platforms.push(new Platform(600, 250, 100, 20));
+                    
+                    // 12 wolves (final challenge)
+                    enemies.push(new Enemy(50, 430));
+                    enemies.push(new Enemy(200, 380));
+                    enemies.push(new Enemy(350, 330));
+                    enemies.push(new Enemy(500, 280));
+                    enemies.push(new Enemy(650, 230));
+                    enemies.push(new Enemy(100, 350));
+                    enemies.push(new Enemy(250, 300));
+                    enemies.push(new Enemy(400, 250));
+                    enemies.push(new Enemy(550, 200));
+                    enemies.push(new Enemy(700, 150));
+                    enemies.push(new Enemy(150, 200));
+                    enemies.push(new Enemy(300, 150));
+                    
+                    // Health pickups
+                    items.push(new Item(200, 370));
+                    items.push(new Item(500, 270));
+                    items.push(new Item(700, 130));
+                    break;
+            }
+        }
+        
+        // Level complete
+        function levelComplete() {
+            gameRunning = false;
+            playerHealth = player.health;
+            levelCompleteScreen.classList.remove('hidden');
+        }
+        
+        // Next level
+        function nextLevel() {
+            currentLevel++;
+            levelDisplay.textContent = currentLevel;
+            levelCompleteScreen.classList.add('hidden');
+            gameRunning = true;
+            resetLevel();
+        }
+        
+        // Game over
+        function gameOver() {
+            gameRunning = false;
+            gameOverScreen.classList.remove('hidden');
+        }
+        
+        // Victory
+        function victory() {
+            gameRunning = false;
+            victoryScreen.classList.remove('hidden');
+        }
+        
+        // Restart game
+        function restartGame() {
+            startScreen.classList.add('hidden');
+            levelCompleteScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            victoryScreen.classList.add('hidden');
+            
+            resetGame();
+            gameRunning = true;
+            resetLevel();
+        }
+        
+        // Take damage helper
+        function takeDamage(amount) {
+            if (player) {
+                player.takeDamage(amount);
+            }
+        }
+        
+        // Initialize the game when the page loads
+        window.addEventListener('load', initGame);
+    </script>
+</body>
+</html>
