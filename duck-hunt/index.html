@@ -1,0 +1,504 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Duck Hunt - Modern Edition</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #222;
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 500px;
+            background: linear-gradient(to bottom, #87CEEB 60%, #228B22 40%);
+            border: 8px solid #654321;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+
+        #score-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 24px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 5px 15px;
+            border-radius: 5px;
+            z-index: 100;
+        }
+
+        #ammo-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 5px 15px;
+            border-radius: 5px;
+            z-index: 100;
+        }
+
+        #dog {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 80px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 80"><rect x="20" y="30" width="60" height="30" rx="10" fill="%23A0522D"/><circle cx="30" cy="25" r="15" fill="%23A0522D"/><circle cx="30" cy="20" r="5" fill="%23FFFFFF"/><circle cx="27" cy="18" r="2" fill="%23000000"/><path d="M15 25 Q10 15 5 20" stroke="%23A0522D" stroke-width="3" fill="none"/><path d="M45 25 Q50 15 55 20" stroke="%23A0522D" stroke-width="3" fill="none"/></svg>');
+            background-repeat: no-repeat;
+            z-index: 10;
+            transition: transform 0.3s;
+        }
+
+        .duck {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60"><circle cx="30" cy="30" r="20" fill="%23FFA500"/><circle cx="40" cy="25" r="5" fill="%23FFFFFF"/><circle cx="41" cy="24" r="2" fill="%23000000"/><path d="M15 30 Q25 35 30 30" stroke="%23FF4500" stroke-width="3" fill="none"/><path d="M10 25 L15 20 L20 25" stroke="%23FF4500" stroke-width="2" fill="%23FF4500"/></svg>');
+            background-repeat: no-repeat;
+            z-index: 5;
+            transition: transform 0.1s;
+            animation: duckWings 0.5s infinite alternate;
+        }
+
+        @keyframes duckWings {
+            0% { transform: translateY(0px); }
+            100% { transform: translateY(-5px); }
+        }
+
+        .bullet-hole {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="%23000"/><circle cx="10" cy="10" r="5" fill="%23333"/></svg>');
+            z-index: 2;
+        }
+
+        .cloud {
+            position: absolute;
+            background-color: rgba(255, 255, 255, 0.7);
+            border-radius: 50%;
+            z-index: 1;
+        }
+
+        #start-screen, #game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+
+        #game-over {
+            display: none;
+        }
+
+        h1 {
+            font-size: 48px;
+            margin-bottom: 30px;
+            color: #FFA500;
+            text-shadow: 3px 3px 0 #654321;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 20px;
+            background-color: #FFA500;
+            color: #222;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background-color: #FF8C00;
+            transform: scale(1.05);
+        }
+
+        #crosshair {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            pointer-events: none;
+            z-index: 1000;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12" stroke="%23FF0000" stroke-width="2" fill="none"/><line x1="15" y1="5" x2="15" y2="10" stroke="%23FF0000" stroke-width="2"/><line x1="15" y1="20" x2="15" y2="25" stroke="%23FF0000" stroke-width="2"/><line x1="5" y1="15" x2="10" y2="15" stroke="%23FF0000" stroke-width="2"/><line x1="20" y1="15" x2="25" y2="15" stroke="%23FF0000" stroke-width="2"/></svg>');
+            transform: translate(-15px, -15px);
+            display: none;
+        }
+
+        #shot-effect {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="%23FF0000" opacity="0.3"/><circle cx="50" cy="50" r="30" fill="%23FF4500" opacity="0.3"/><circle cx="50" cy="50" r="20" fill="%23FF8C00" opacity="0.3"/></svg>');
+            transform: translate(-50px, -50px);
+            pointer-events: none;
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        #grass {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 80px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 80"><path d="M0,80 L0,60 C50,40 100,70 150,50 C200,30 250,60 300,40 C350,20 400,50 450,30 C500,10 550,40 600,20 C650,0 700,30 750,10 C800,-10 800,80 800,80 Z" fill="%23228B22"/></svg>');
+            background-repeat: no-repeat;
+            background-size: cover;
+            z-index: 3;
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .duck-hit {
+            animation: duckHit 0.5s forwards;
+        }
+
+        @keyframes duckHit {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(0) rotate(360deg); opacity: 0; }
+        }
+
+        .dog-laugh {
+            animation: dogLaugh 0.5s infinite alternate;
+        }
+
+        @keyframes dogLaugh {
+            0% { transform: translateX(-50%) rotate(0deg); }
+            100% { transform: translateX(-50%) rotate(5deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="score-display">Score: 0</div>
+        <div id="ammo-display">Ammo: 3</div>
+        <div id="dog"></div>
+        <div id="grass"></div>
+        <div id="crosshair"></div>
+        <div id="shot-effect"></div>
+        
+        <div id="start-screen">
+            <h1>DUCK HUNT</h1>
+            <button id="start-button">START GAME</button>
+            <div id="instructions">
+                <p>Click to shoot ducks. You have 3 bullets per round.</p>
+                <p>Hit ducks to score points. Miss 3 times and the dog will laugh at you!</p>
+            </div>
+        </div>
+        
+        <div id="game-over">
+            <h1>GAME OVER</h1>
+            <div id="final-score">Score: 0</div>
+            <button id="restart-button">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const gameContainer = document.getElementById('game-container');
+            const startScreen = document.getElementById('start-screen');
+            const gameOverScreen = document.getElementById('game-over');
+            const startButton = document.getElementById('start-button');
+            const restartButton = document.getElementById('restart-button');
+            const scoreDisplay = document.getElementById('score-display');
+            const ammoDisplay = document.getElementById('ammo-display');
+            const finalScore = document.getElementById('final-score');
+            const dog = document.getElementById('dog');
+            const crosshair = document.getElementById('crosshair');
+            const shotEffect = document.getElementById('shot-effect');
+            
+            let score = 0;
+            let ammo = 3;
+            let gameActive = false;
+            let ducks = [];
+            let cloudInterval;
+            let duckInterval;
+            let roundInterval;
+            
+            // Create some clouds
+            function createClouds() {
+                for (let i = 0; i < 5; i++) {
+                    createCloud();
+                }
+                cloudInterval = setInterval(createCloud, 8000);
+            }
+            
+            function createCloud() {
+                const cloud = document.createElement('div');
+                cloud.className = 'cloud';
+                
+                const size = Math.random() * 80 + 40;
+                const x = Math.random() * (gameContainer.offsetWidth - size);
+                const y = Math.random() * 150;
+                const opacity = Math.random() * 0.4 + 0.3;
+                
+                cloud.style.width = `${size}px`;
+                cloud.style.height = `${size * 0.6}px`;
+                cloud.style.left = `${x}px`;
+                cloud.style.top = `${y}px`;
+                cloud.style.opacity = opacity;
+                
+                gameContainer.appendChild(cloud);
+                
+                // Animate cloud
+                let pos = x;
+                const animateCloud = () => {
+                    pos += 0.2;
+                    cloud.style.left = `${pos}px`;
+                    
+                    if (pos < gameContainer.offsetWidth) {
+                        requestAnimationFrame(animateCloud);
+                    } else {
+                        cloud.remove();
+                    }
+                };
+                
+                requestAnimationFrame(animateCloud);
+            }
+            
+            // Create a duck
+            function createDuck() {
+                if (!gameActive) return;
+                
+                const duck = document.createElement('div');
+                duck.className = 'duck';
+                
+                const startX = Math.random() * (gameContainer.offsetWidth - 60);
+                const speed = Math.random() * 3 + 1;
+                const amplitude = Math.random() * 50 + 20;
+                const frequency = Math.random() * 0.02 + 0.01;
+                
+                duck.style.left = `${startX}px`;
+                duck.style.bottom = '80px';
+                
+                gameContainer.appendChild(duck);
+                ducks.push({
+                    element: duck,
+                    x: startX,
+                    y: 80,
+                    speed: speed,
+                    amplitude: amplitude,
+                    frequency: frequency,
+                    time: 0,
+                    hit: false
+                });
+            }
+            
+            // Update duck positions
+            function updateDucks() {
+                ducks.forEach((duck, index) => {
+                    if (duck.hit) return;
+                    
+                    duck.time += 0.1;
+                    duck.y += duck.speed;
+                    duck.x += Math.sin(duck.time * duck.frequency) * duck.amplitude * 0.1;
+                    
+                    duck.element.style.left = `${duck.x}px`;
+                    duck.element.style.bottom = `${duck.y}px`;
+                    
+                    // Remove duck if it goes off screen
+                    if (duck.y > gameContainer.offsetHeight) {
+                        duck.element.remove();
+                        ducks.splice(index, 1);
+                    }
+                });
+                
+                requestAnimationFrame(updateDucks);
+            }
+            
+            // Start a new round
+            function startRound() {
+                ammo = 3;
+                ammoDisplay.textContent = `Ammo: ${ammo}`;
+                
+                // Create ducks for this round
+                const duckCount = Math.floor(Math.random() * 3) + 2;
+                for (let i = 0; i < duckCount; i++) {
+                    setTimeout(createDuck, i * 1500);
+                }
+                
+                // Set timeout for next round
+                roundInterval = setTimeout(() => {
+                    if (ammo === 0 && ducks.length === 0) {
+                        dogLaugh();
+                        setTimeout(startRound, 3000);
+                    }
+                }, 5000);
+            }
+            
+            // Dog laughs when player misses all shots
+            function dogLaugh() {
+                dog.classList.add('dog-laugh');
+                setTimeout(() => {
+                    dog.classList.remove('dog-laugh');
+                }, 2000);
+            }
+            
+            // Handle shooting
+            function shoot(e) {
+                if (!gameActive || ammo <= 0) return;
+                
+                // Show shot effect
+                shotEffect.style.left = `${e.clientX - gameContainer.offsetLeft}px`;
+                shotEffect.style.top = `${e.clientY - gameContainer.offsetTop}px`;
+                shotEffect.style.opacity = 1;
+                setTimeout(() => {
+                    shotEffect.style.opacity = 0;
+                }, 200);
+                
+                // Create bullet hole
+                const bulletHole = document.createElement('div');
+                bulletHole.className = 'bullet-hole';
+                bulletHole.style.left = `${e.clientX - gameContainer.offsetLeft - 10}px`;
+                bulletHole.style.top = `${e.clientY - gameContainer.offsetTop - 10}px`;
+                gameContainer.appendChild(bulletHole);
+                
+                // Check if any ducks were hit
+                let hit = false;
+                ducks.forEach((duck, index) => {
+                    const duckRect = duck.element.getBoundingClientRect();
+                    const gameRect = gameContainer.getBoundingClientRect();
+                    const duckX = duckRect.left - gameRect.left + duckRect.width / 2;
+                    const duckY = duckRect.top - gameRect.top + duckRect.height / 2;
+                    const clickX = e.clientX - gameRect.left;
+                    const clickY = e.clientY - gameRect.top;
+                    
+                    const distance = Math.sqrt(
+                        Math.pow(duckX - clickX, 2) + 
+                        Math.pow(duckY - clickY, 2)
+                    );
+                    
+                    if (distance < 30 && !duck.hit) {
+                        duck.hit = true;
+                        duck.element.classList.add('duck-hit');
+                        setTimeout(() => {
+                            duck.element.remove();
+                            ducks.splice(index, 1);
+                        }, 500);
+                        
+                        score += 100;
+                        scoreDisplay.textContent = `Score: ${score}`;
+                        hit = true;
+                    }
+                });
+                
+                // Update ammo
+                ammo--;
+                ammoDisplay.textContent = `Ammo: ${ammo}`;
+                
+                // If all ammo is used and no ducks were hit, dog laughs
+                if (ammo === 0 && !hit && ducks.length > 0) {
+                    setTimeout(dogLaugh, 1000);
+                    setTimeout(startRound, 3000);
+                }
+                
+                // If all ducks are hit, start new round
+                if (ammo > 0 && ducks.length === 0) {
+                    clearTimeout(roundInterval);
+                    startRound();
+                }
+            }
+            
+            // Mouse movement for crosshair
+            function moveCrosshair(e) {
+                const rect = gameContainer.getBoundingClientRect();
+                crosshair.style.left = `${e.clientX - rect.left}px`;
+                crosshair.style.top = `${e.clientY - rect.top}px`;
+            }
+            
+            // Start game
+            function startGame() {
+                score = 0;
+                ammo = 3;
+                gameActive = true;
+                
+                scoreDisplay.textContent = `Score: ${score}`;
+                ammoDisplay.textContent = `Ammo: ${ammo}`;
+                
+                startScreen.style.display = 'none';
+                gameOverScreen.style.display = 'none';
+                crosshair.style.display = 'block';
+                
+                // Clear any existing ducks
+                ducks.forEach(duck => duck.element.remove());
+                ducks = [];
+                
+                // Start game elements
+                createClouds();
+                updateDucks();
+                startRound();
+            }
+            
+            // End game
+            function endGame() {
+                gameActive = false;
+                clearInterval(cloudInterval);
+                clearInterval(duckInterval);
+                clearTimeout(roundInterval);
+                
+                finalScore.textContent = `Score: ${score}`;
+                gameOverScreen.style.display = 'flex';
+                crosshair.style.display = 'none';
+            }
+            
+            // Event listeners
+            startButton.addEventListener('click', startGame);
+            restartButton.addEventListener('click', startGame);
+            gameContainer.addEventListener('click', shoot);
+            gameContainer.addEventListener('mousemove', moveCrosshair);
+            
+            // Show crosshair when mouse enters game area
+            gameContainer.addEventListener('mouseenter', () => {
+                if (gameActive) crosshair.style.display = 'block';
+            });
+            
+            gameContainer.addEventListener('mouseleave', () => {
+                crosshair.style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html>
