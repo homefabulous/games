@@ -1,0 +1,950 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Junk Collector</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Press+Start+2P&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background-color: #000;
+            color: #0f0;
+            font-family: 'Orbitron', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background-image: radial-gradient(ellipse at bottom, #1B2735 0%, #090A0F 100%);
+        }
+        
+        #start-screen, #game-over-screen, #upgrade-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 100;
+        }
+        
+        #upgrade-screen {
+            display: none;
+            background-color: rgba(0, 0, 30, 0.9);
+        }
+        
+        #game-over-screen {
+            display: none;
+        }
+        
+        h1 {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            text-shadow: 0 0 10px #0f0, 0 0 20px #0f0;
+        }
+        
+        h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 5px #0f0;
+        }
+        
+        button {
+            background-color: #0f0;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            padding: 15px 30px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            box-shadow: 0 0 10px #0f0;
+        }
+        
+        button:hover {
+            background-color: #000;
+            color: #0f0;
+            transform: scale(1.05);
+            box-shadow: 0 0 20px #0f0;
+        }
+        
+        #ship {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-image: url('data:image/png;base64,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');
+            background-size: contain;
+            background-repeat: no-repeat;
+            transition: transform 0.1s;
+            z-index: 10;
+        }
+        
+        .junk {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-image: url('data:image/png;base64,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');
+            background-size: contain;
+            z-index: 5;
+        }
+        
+        .asteroid {
+            position: absolute;
+            background-image: url('data:image/png;base64,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');
+            background-size: contain;
+            z-index: 5;
+        }
+        
+        .star {
+            position: absolute;
+            background-color: white;
+            border-radius: 50%;
+            z-index: 1;
+        }
+        
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            display: flex;
+            flex-direction: column;
+            font-size: 1.2rem;
+            gap: 5px;
+            z-index: 50;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #0f0;
+        }
+        
+        #shield-bar-container {
+            width: 150px;
+            height: 20px;
+            border: 2px solid #0f0;
+            border-radius: 5px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+        
+        #shield-bar {
+            height: 100%;
+            width: 100%;
+            background-color: #0f0;
+            transition: width 0.3s;
+        }
+        
+        #upgrade-options {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 800px;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .upgrade-option {
+            background-color: rgba(0, 20, 30, 0.8);
+            border: 2px solid #0f0;
+            border-radius: 10px;
+            padding: 20px;
+            width: 200px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .upgrade-option:hover {
+            transform: scale(1.05);
+            background-color: rgba(0, 40, 60, 0.8);
+            box-shadow: 0 0 15px #0f0;
+        }
+        
+        .upgrade-option i {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            color: #0f0;
+        }
+        
+        .upgrade-option h3 {
+            margin-bottom: 10px;
+            color: #0f0;
+        }
+        
+        .explosion {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%23ff5500" d="M11,1H13V4H11V1M11,18H13V21H11V18M4,11V13H7V11H4M14,11V13H21V11H14M4.22,4.22L6.34,6.34L4.22,8.5L6.34,10.56L4.22,12.66L6.34,14.74L4.22,16.86L6.34,19L8.5,16.86L10.56,19L12.66,16.86L14.74,19L16.86,16.86L19,14.74L16.86,12.66L19,10.56L16.86,8.5L19,6.34L16.86,4.22L14.74,6.34L12.66,4.22L10.56,6.34L8.5,4.22L6.34,6.34L4.22,4.22Z"/></svg>');
+            background-size: contain;
+            z-index: 20;
+            animation: explode 0.5s forwards;
+        }
+        
+        @keyframes explode {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        
+        #collector-beam {
+            position: absolute;
+            width: 5px;
+            background: linear-gradient(to bottom, rgba(0, 255, 0, 0.8), transparent);
+            z-index: 3;
+            display: none;
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #0f0;
+        }
+        
+        .missile {
+            position: absolute;
+            width: 8px;
+            height: 15px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%2300ffff" d="M13.04 19.92C14.08 20.18 15.18 20 16 19.26C17.04 18.33 17.39 16.78 17.08 15.5L20.5 11.89L21.59 13L13 21.59L11.92 20.5L15.58 17.08C14.27 17.4 12.68 17.09 11.76 16C11 15.17 10.82 14.07 11.09 13.04L7.5 9.42L10.08 6.75C10.38 7.8 10.89 8.81 11.62 9.62C12.34 10.41 13.23 11 14.24 11.42L20.5 4.5L19.5 3.5L12.63 9.71C12.18 9.28 11.77 8.81 11.42 8.31L13.5 6.31L11.5 4.31L9.5 6.31L4.5 1.5L3.5 2.5L5.69 7.5L7.69 5.5L9.69 7.5L7.68 9.68C7.26 9.31 6.82 8.98 6.35 8.68L3.5 6.5L2.5 7.5L8.66 11.61C8.16 12.76 8 13.96 8.19 15.08L6.71 16.83L8.12 18.24L9.9 16.76C10.44 16.92 11.01 17 11.58 17L13.04 19.92Z"/></svg>');
+            background-size: contain;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="start-screen">
+            <h1>SPACE COLLECTOR</h1>
+            <h2>The moon is falling apart! Collect all the moon cheese before it hits earth! 
+             </h2>
+            <button id="start-button">Start Mission</button>
+        </div>
+        
+        <div id="game-over-screen">
+            <h1>MISSION FAILED</h1>
+            <h2 id="final-score">You collected 0 pieces of junk</h2>
+            <button id="restart-button">Try Again</button>
+        </div>
+        
+        <div id="upgrade-screen">
+            <h1>UPGRADE YOUR SHIP</h1>
+            <h2 id="upgrade-points">Upgrade Points: 0</h2>
+            <div id="upgrade-options">
+                <div class="upgrade-option" data-upgrade="speed">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <h3>Engine Speed</h3>
+                    <p>Current: +0%</p>
+                    <p>Cost: 1 point</p>
+                </div>
+                <div class="upgrade-option" data-upgrade="shield">
+                    <i class="fas fa-shield-alt"></i>
+                    <h3>Shield Capacity</h3>
+                    <p>Current: +0%</p>
+                    <p>Cost: 1 point</p>
+                </div>
+                <div class="upgrade-option" data-upgrade="collector">
+                    <i class="fas fa-magnet"></i>
+                    <h3>Collector Range</h3>
+                    <p>Current: +0%</p>
+                    <p>Cost: 1 point</p>
+                </div>
+                <div class="upgrade-option" data-upgrade="missile">
+                    <i class="fas fa-rocket"></i>
+                    <h3>Missile System</h3>
+                    <p>Current: Unavailable</p>
+                    <p>Cost: 2 points</p>
+                </div>
+            </div>
+            <button id="continue-button">Continue Mission</button>
+        </div>
+        
+        <div id="ship"></div>
+        <div id="collector-beam"></div>
+        <div id="hud">
+            <div>Junk Collected: <span id="score">0</span></div>
+            <div>Shield:</div>
+            <div id="shield-bar-container">
+                <div id="shield-bar"></div>
+            </div>
+            <div>Level: <span id="level">1</span></div>
+            <div>Upgrades: <span id="upgrade-count">0</span></div>
+            <div>Missiles: <span id="missile-count">0</span></div>
+        </div>
+        
+        <div id="instructions">
+            Arrow keys to move | Space for collector | M to fire missile (if available)
+        </div>
+    </div>
+
+    <script>
+        // Game state
+        const gameState = {
+            running: false,
+            score: 0,
+            level: 1,
+            junkCollected: 0,
+            ship: null,
+            junk: [],
+            asteroids: [],
+            stars: [],
+            missiles: [],
+            keys: {},
+            upgrades: {
+                speed: 0,
+                shield: 0,
+                collector: 0,
+                missile: 0
+            },
+            upgradePoints: 0,
+            shield: 100,
+            maxShield: 100,
+            shipSpeed: 5,
+            collectorActive: false,
+            collectorRange: 100,
+            collectorWidth: 5,
+            lastJunkSpawn: 0,
+            junkSpawnRate: 1000,
+            lastAsteroidSpawn: 0,
+            asteroidSpawnRate: 2000,
+            missileCooldown: 0
+        };
+        
+        // DOM elements
+        const gameContainer = document.getElementById('game-container');
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const upgradeScreen = document.getElementById('upgrade-screen');
+        const startButton = document.getElementById('start-button');
+        const restartButton = document.getElementById('restart-button');
+        const continueButton = document.getElementById('continue-button');
+        const scoreDisplay = document.getElementById('score');
+        const levelDisplay = document.getElementById('level');
+        const upgradeCountDisplay = document.getElementById('upgrade-count');
+        const missileCountDisplay = document.getElementById('missile-count');
+        const shieldBar = document.getElementById('shield-bar');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const upgradePointsDisplay = document.getElementById('upgrade-points');
+        const upgradeOptions = document.querySelectorAll('.upgrade-option');
+        
+        // Game dimensions
+        const gameWidth = gameContainer.clientWidth;
+        const gameHeight = gameContainer.clientHeight;
+        
+        // Initialize game
+        function initGame() {
+            // Clear previous state
+            gameState.junk = [];
+            gameState.asteroids = [];
+            gameState.missiles = [];
+            gameState.shield = gameState.maxShield * (1 + gameState.upgrades.shield * 0.2);
+            gameState.collectorRange = 100 + (gameState.upgrades.collector * 20);
+            
+            // Create ship
+            const ship = document.createElement('div');
+            ship.id = 'ship';
+            gameContainer.appendChild(ship);
+            gameState.ship = ship;
+            
+            // Position ship
+            ship.style.left = `${gameWidth / 2 - 25}px`;
+            ship.style.top = `${gameHeight - 100}px`;
+            
+            // Create background stars
+            createStars(100);
+            
+            // Start game loop
+            gameState.running = true;
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Create background stars
+        function createStars(count) {
+            for (let i = 0; i < count; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                
+                const size = Math.random() * 3;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                
+                const x = Math.random() * gameWidth;
+                const y = Math.random() * gameHeight;
+                star.style.left = `${x}px`;
+                star.style.top = `${y}px`;
+                
+                star.style.opacity = Math.random();
+                
+                gameContainer.appendChild(star);
+                gameState.stars.push(star);
+            }
+        }
+        
+        // Game loop
+        function gameLoop(timestamp) {
+            if (!gameState.running) return;
+            
+            // Move ship
+            moveShip();
+            
+            // Spawn junk
+            if (timestamp - gameState.lastJunkSpawn > gameState.junkSpawnRate) {
+                spawnJunk();
+                gameState.lastJunkSpawn = timestamp;
+            }
+            
+            // Spawn asteroids
+            if (timestamp - gameState.lastAsteroidSpawn > gameState.asteroidSpawnRate) {
+                spawnAsteroid();
+                gameState.lastAsteroidSpawn = timestamp;
+            }
+            
+            // Move junk
+            moveJunk();
+            
+            // Move asteroids
+            moveAsteroids();
+            
+            // Move missiles
+            moveMissiles();
+            
+            // Check collisions
+            checkCollisions();
+            
+            // Activate collector if key is pressed
+            if (gameState.keys[' ']) {
+                activateCollector();
+            } else {
+                deactivateCollector();
+            }
+            
+            // Check for missile fire
+            if (gameState.keys['m'] && gameState.upgrades.missile > 0 && gameState.missileCooldown <= 0) {
+                fireMissile();
+                gameState.missileCooldown = 500;
+            }
+            
+            // Update missile cooldown
+            if (gameState.missileCooldown > 0) {
+                gameState.missileCooldown -= 16;
+            }
+            
+            // Update HUD
+            updateHUD();
+            
+            // Check for level up
+            if (gameState.junkCollected >= gameState.level * 10) {
+                levelUp();
+            }
+            
+            // Next frame
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Move ship based on keyboard input
+        function moveShip() {
+            const ship = gameState.ship;
+            const shipSpeed = gameState.shipSpeed * (1 + gameState.upgrades.speed * 0.15);
+            
+            // Get current position
+            let x = parseInt(ship.style.left) || 0;
+            let y = parseInt(ship.style.top) || 0;
+            
+            // Adjust position based on keys
+            if (gameState.keys['ArrowUp'] && y > 0) {
+                y -= shipSpeed;
+            }
+            if (gameState.keys['ArrowDown'] && y < gameHeight - 50) {
+                y += shipSpeed;
+            }
+            if (gameState.keys['ArrowLeft'] && x > 0) {
+                x -= shipSpeed;
+            }
+            if (gameState.keys['ArrowRight'] && x < gameWidth - 50) {
+                x += shipSpeed;
+            }
+            
+            // Apply new position
+            ship.style.left = `${x}px`;
+            ship.style.top = `${y}px`;
+        }
+        
+        // Spawn new junk
+        function spawnJunk() {
+            const junk = document.createElement('div');
+            junk.className = 'junk';
+            
+            // Random position at top of screen
+            const x = Math.random() * (gameWidth - 20);
+            const y = -20;
+            
+            junk.style.left = `${x}px`;
+            junk.style.top = `${y}px`;
+            
+            // Random type (for future variations)
+            const type = Math.floor(Math.random() * 3);
+            
+            gameContainer.appendChild(junk);
+            gameState.junk.push({ element: junk, x, y, type, speed: 1 + Math.random() * 2 });
+        }
+        
+        // Spawn new asteroid
+        function spawnAsteroid() {
+            const asteroid = document.createElement('div');
+            asteroid.className = 'asteroid';
+            
+            // Choose random size (30-60px)
+            const size = 30 + Math.random() * 30;
+            asteroid.style.width = `${size}px`;
+            asteroid.style.height = `${size}px`;
+            
+            // Random position at top of screen
+            const x = Math.random() * (gameWidth - size);
+            const y = -size;
+            
+            asteroid.style.left = `${x}px`;
+            asteroid.style.top = `${y}px`;
+            
+            gameContainer.appendChild(asteroid);
+            gameState.asteroids.push({ 
+                element: asteroid, 
+                x, 
+                y, 
+                width: size, 
+                height: size, 
+                speed: 2 + Math.random() * 2,
+                angle: Math.random() * 0.4 - 0.2 // Slight left/right drift
+            });
+        }
+        
+        // Move all junk pieces
+        function moveJunk() {
+            for (let i = gameState.junk.length - 1; i >= 0; i--) {
+                const junk = gameState.junk[i];
+                junk.y += junk.speed;
+                junk.element.style.top = `${junk.y}px`;
+                
+                // Remove junk that goes off screen
+                if (junk.y > gameHeight) {
+                    junk.element.remove();
+                    gameState.junk.splice(i, 1);
+                }
+            }
+        }
+        
+        // Move all asteroids
+        function moveAsteroids() {
+            for (let i = gameState.asteroids.length - 1; i >= 0; i--) {
+                const asteroid = gameState.asteroids[i];
+                asteroid.y += asteroid.speed;
+                asteroid.x += asteroid.angle * asteroid.speed;
+                asteroid.element.style.top = `${asteroid.y}px`;
+                asteroid.element.style.left = `${asteroid.x}px`;
+                
+                // Remove asteroids that go off screen
+                if (asteroid.y > gameHeight || 
+                    asteroid.x < -asteroid.width || 
+                    asteroid.x > gameWidth) {
+                    asteroid.element.remove();
+                    gameState.asteroids.splice(i, 1);
+                }
+            }
+        }
+        
+        // Move all missiles
+        function moveMissiles() {
+            for (let i = gameState.missiles.length - 1; i >= 0; i--) {
+                const missile = gameState.missiles[i];
+                missile.y -= 8; // Move upward
+                missile.element.style.top = `${missile.y}px`;
+                
+                // Remove missiles that go off screen
+                if (missile.y < -15) {
+                    missile.element.remove();
+                    gameState.missiles.splice(i, 1);
+                }
+            }
+        }
+        
+        // Check for collisions
+        function checkCollisions() {
+            const shipRect = gameState.ship.getBoundingClientRect();
+            
+            // Check junk collection
+            if (gameState.collectorActive) {
+                const collectorBeam = document.getElementById('collector-beam');
+                const beamRect = collectorBeam.getBoundingClientRect();
+                
+                for (let i = gameState.junk.length - 1; i >= 0; i--) {
+                    const junk = gameState.junk[i];
+                    const junkRect = junk.element.getBoundingClientRect();
+                    
+                    if (isColliding(beamRect, junkRect)) {
+                        // Collect junk
+                        collectJunk(junk, i);
+                        createExplosion(junkRect.left + 10, junkRect.top + 10);
+                    }
+                }
+            }
+            
+            // Check asteroid collisions
+            for (let i = gameState.asteroids.length - 1; i >= 0; i--) {
+                const asteroid = gameState.asteroids[i];
+                const asteroidRect = asteroid.element.getBoundingClientRect();
+                
+                // Check missile-asteroid collisions
+                for (let j = gameState.missiles.length - 1; j >= 0; j--) {
+                    const missile = gameState.missiles[j];
+                    const missileRect = missile.element.getBoundingClientRect();
+                    
+                    if (isColliding(missileRect, asteroidRect)) {
+                        // Destroy asteroid with missile
+                        createExplosion(asteroidRect.left + asteroid.width/2, asteroidRect.top + asteroid.height/2);
+                        asteroid.element.remove();
+                        gameState.asteroids.splice(i, 1);
+                        
+                        // Remove missile
+                        missile.element.remove();
+                        gameState.missiles.splice(j, 1);
+                        
+                        gameState.score += 5; // Bonus for destroying asteroids
+                        break;
+                    }
+                }
+                
+                // Check ship-asteroid collisions
+                if (isColliding(shipRect, asteroidRect)) {
+                    takeDamage(20);
+                    createExplosion(shipRect.left + 25, shipRect.top + 25);
+                    
+                    // Push ship away
+                    const shipX = parseInt(gameState.ship.style.left);
+                    const shipY = parseInt(gameState.ship.style.top);
+                    
+                    const pushDir = asteroid.x > shipX ? -10 : 10;
+                    gameState.ship.style.left = `${shipX + pushDir}px`;
+                    
+                    // Remove asteroid
+                    asteroid.element.remove();
+                    gameState.asteroids.splice(i, 1);
+                    
+                    if (gameState.shield <= 0) {
+                        gameOver();
+                    }
+                }
+            }
+        }
+        
+        // Collision detection helper
+        function isColliding(rect1, rect2) {
+            return !(
+                rect1.right < rect2.left || 
+                rect1.left > rect2.right || 
+                rect1.bottom < rect2.top || 
+                rect1.top > rect2.bottom
+            );
+        }
+        
+        // Collect junk
+        function collectJunk(junk, index) {
+            gameState.score += 1;
+            gameState.junkCollected += 1;
+            
+            // Remove junk
+            junk.element.remove();
+            gameState.junk.splice(index, 1);
+        }
+        
+        // Take damage
+        function takeDamage(amount) {
+            gameState.shield = Math.max(0, gameState.shield - amount);
+            
+            // Flash shield bar when taking damage
+            const shieldBar = document.getElementById('shield-bar');
+            shieldBar.style.backgroundColor = 'red';
+            setTimeout(() => {
+                if (gameState.shield > 0) {
+                    shieldBar.style.backgroundColor = '#0f0';
+                }
+            }, 200);
+        }
+        
+        // Activate collector beam
+        function activateCollector() {
+            if (!gameState.collectorActive) {
+                gameState.collectorActive = true;
+                
+                const shipRect = gameState.ship.getBoundingClientRect();
+                const beam = document.getElementById('collector-beam');
+                beam.style.display = 'block';
+                beam.style.left = `${shipRect.left + 22.5}px`;
+                beam.style.top = `${shipRect.top}px`;
+                beam.style.height = `${gameState.collectorRange}px`;
+                beam.style.width = `${gameState.collectorWidth}px`;
+            }
+        }
+        
+        // Deactivate collector beam
+        function deactivateCollector() {
+            if (gameState.collectorActive) {
+                gameState.collectorActive = false;
+                document.getElementById('collector-beam').style.display = 'none';
+            }
+        }
+        
+        // Fire missile
+        function fireMissile() {
+            const shipRect = gameState.ship.getBoundingClientRect();
+            
+            const missile = document.createElement('div');
+            missile.className = 'missile';
+            
+            missile.style.left = `${shipRect.left + 21}px`;
+            missile.style.top = `${shipRect.top - 15}px`;
+            
+            gameContainer.appendChild(missile);
+            gameState.missiles.push({ element: missile, x: shipRect.left + 21, y: shipRect.top - 15 });
+            
+            // Update missile count
+            gameState.missileCount--;
+            missileCountDisplay.textContent = gameState.missileCount;
+            
+            // Reset missile count if needed
+            if (gameState.missileCooldown <= 0 && gameState.missileCount <= 0) {
+                gameState.missileCount = 3;
+                missileCountDisplay.textContent = gameState.missileCount;
+            }
+        }
+        
+        // Create explosion animation
+        function createExplosion(x, y) {
+            const explosion = document.createElement('div');
+            explosion.className = 'explosion';
+            explosion.style.left = `${x - 30}px`;
+            explosion.style.top = `${y - 30}px`;
+            
+            gameContainer.appendChild(explosion);
+            
+            // Remove after animation
+            setTimeout(() => {
+                explosion.remove();
+            }, 500);
+        }
+        
+        // Update HUD
+        function updateHUD() {
+            scoreDisplay.textContent = gameState.score;
+            levelDisplay.textContent = gameState.level;
+            upgradeCountDisplay.textContent = gameState.upgradePoints;
+            
+            const shieldPercentage = (gameState.shield / (gameState.maxShield * (1 + gameState.upgrades.shield * 0.2))) * 100;
+            shieldBar.style.width = `${shieldPercentage}%`;
+        }
+        
+        // Level up
+        function levelUp() {
+            gameState.level++;
+            gameState.upgradePoints++;
+            gameState.junkCollected = 0;
+            
+            // Increase difficulty
+            gameState.junkSpawnRate = Math.max(300, gameState.junkSpawnRate - 50);
+            gameState.asteroidSpawnRate = Math.max(800, gameState.asteroidSpawnRate - 100);
+            
+            // Show upgrade screen
+            showUpgradeScreen();
+        }
+        
+        // Show upgrade screen
+        function showUpgradeScreen() {
+            gameState.running = false;
+            
+            // Update upgrade points display
+            upgradePointsDisplay.textContent = `Upgrade Points: ${gameState.upgradePoints}`;
+            
+            // Update upgrade options
+            updateUpgradeOptions();
+            
+            upgradeScreen.style.display = 'flex';
+        }
+        
+        // Update upgrade options display
+        function updateUpgradeOptions() {
+            upgradeOptions.forEach(option => {
+                const upgradeType = option.dataset.upgrade;
+                const current = option.querySelector('p:nth-of-type(1)');
+                const cost = option.querySelector('p:nth-of-type(2)');
+                
+                if (upgradeType === 'missile') {
+                    if (gameState.upgrades.missile > 0) {
+                        current.textContent = `Current: Level ${gameState.upgrades.missile}`;
+                    } else {
+                        current.textContent = 'Current: Unavailable';
+                    }
+                    cost.textContent = gameState.upgrades.missile < 3 ? 
+                        `Cost: ${gameState.upgrades.missile < 1 ? 2 : 1} point` : 
+                        'Max level';
+                } else {
+                    current.textContent = `Current: +${gameState.upgrades[upgradeType] * (upgradeType === 'speed' ? 15 : 20)}%`;
+                    cost.textContent = gameState.upgrades[upgradeType] < 5 ? 
+                        `Cost: 1 point` : 
+                        'Max level';
+                }
+            });
+        }
+        
+        // Game over
+        function gameOver() {
+            gameState.running = false;
+            
+            // Show final score
+            finalScoreDisplay.textContent = `You collected ${gameState.score} pieces of junk`;
+            
+            // Show game over screen
+            gameOverScreen.style.display = 'flex';
+        }
+        
+        // Start game
+        function startGame() {
+            // Reset game state
+            gameState.running = false;
+            gameState.score = 0;
+            gameState.level = 1;
+            gameState.junkCollected = 0;
+            gameState.upgradePoints = 0;
+            gameState.shield = 100;
+            gameState.upgrades = {
+                speed: 0,
+                shield: 0,
+                collector: 0,
+                missile: 0
+            };
+            gameState.junkSpawnRate = 1000;
+            gameState.asteroidSpawnRate = 2000;
+            gameState.missileCount = 0;
+            
+            // Remove all game elements
+            document.querySelectorAll('.junk, .asteroid, .missile, .star').forEach(el => el.remove());
+            if (gameState.ship) {
+                gameState.ship.remove();
+                gameState.ship = null;
+            }
+            
+            // Hide screens
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            upgradeScreen.style.display = 'none';
+            
+            // Initialize new game
+            initGame();
+        }
+        
+        // Event listeners
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', startGame);
+        
+        continueButton.addEventListener('click', () => {
+            upgradeScreen.style.display = 'none';
+            gameState.running = true;
+            
+            // Reset missile count if we have that upgrade
+            if (gameState.upgrades.missile > 0) {
+                gameState.missileCount = 3;
+                missileCountDisplay.textContent = gameState.missileCount;
+            }
+            
+            requestAnimationFrame(gameLoop);
+        });
+        
+        // Upgrade selection
+        upgradeOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                const upgradeType = option.dataset.upgrade;
+                let cost = 1;
+                
+                if (upgradeType === 'missile') {
+                    if (gameState.upgrades.missile >= 3) return;
+                    cost = gameState.upgrades.missile < 1 ? 2 : 1;
+                } else {
+                    if (gameState.upgrades[upgradeType] >= 5) return;
+                }
+                
+                if (gameState.upgradePoints >= cost) {
+                    gameState.upgradePoints -= cost;
+                    gameState.upgrades[upgradeType]++;
+                    
+                    if (upgradeType === 'shield') {
+                        gameState.maxShield = 100 * (1 + gameState.upgrades.shield * 0.2);
+                        gameState.shield = gameState.maxShield;
+                    }
+                    
+                    if (upgradeType === 'collector') {
+                        gameState.collectorRange = 100 + (gameState.upgrades.collector * 20);
+                    }
+                    
+                    // Update displays
+                    upgradePointsDisplay.textContent = `Upgrade Points: ${gameState.upgradePoints}`;
+                    updateUpgradeOptions();
+                    updateHUD();
+                }
+            });
+        });
+        
+        // Keyboard controls
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault(); // Prevent scrolling
+                gameState.keys[' '] = true;
+            } else {
+                gameState.keys[e.key] = true;
+            }
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'Space') {
+                gameState.keys[' '] = false;
+            } else {
+                gameState.keys[e.key] = false;
+            }
+        });
+        
+        // Create collector beam element (hidden by default)
+        const collectorBeam = document.createElement('div');
+        collectorBeam.id = 'collector-beam';
+        gameContainer.appendChild(collectorBeam);
+        
+        // Create missile count element for HUD
+        missileCountDisplay.textContent = gameState.missileCount;
+        
+        // Preload images
+        setTimeout(() => {
+            // This ensures that the SVG images are loaded before the game starts
+        }, 100);
+    </script>
+</body>
+</html>
