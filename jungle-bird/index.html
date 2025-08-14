@@ -1,0 +1,1527 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Papagallo Amazónico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Bungee&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            overflow: hidden;
+            background-color: #0a3d1f;
+        }
+        
+        #gameCanvas {
+            background: linear-gradient(to bottom, #87CEEB 0%, #1E90FF 50%, #006400 100%);
+            display: block;
+            margin: 0 auto;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            border: 4px solid #3a2101;
+        }
+        
+        .title {
+            font-family: 'Bungee', cursive;
+            text-shadow: 3px 3px 0 #3a2101, 5px 5px 0 rgba(0,0,0,0.2);
+        }
+        
+        .fruit {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.5));
+        }
+        
+        .obstacle {
+            position: absolute;
+            background-size: contain;
+            background-repeat: no-repeat;
+            filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.5));
+        }
+        
+        #gameOverScreen {
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+        
+        .parrot {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            transition: transform 0.1s ease;
+            filter: drop-shadow(3px 3px 2px rgba(0,0,0,0.5));
+        }
+        
+        .cloud {
+            position: absolute;
+            background-size: contain;
+            background-repeat: no-repeat;
+            opacity: 0.8;
+            filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.2));
+        }
+        
+        .powerup {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            filter: drop-shadow(0 0 8px rgba(255,255,0,0.8));
+            animation: pulse 1s infinite alternate;
+        }
+        
+        @keyframes flap {
+            0%, 100% { transform: translateY(-3px) rotate(-5deg); }
+            50% { transform: translateY(3px) rotate(5deg); }
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.1); }
+        }
+        
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .flapping {
+            animation: flap 0.3s infinite;
+        }
+        
+        .rotating {
+            animation: rotate 3s infinite linear;
+        }
+        
+        .score-effect {
+            position: absolute;
+            font-size: 24px;
+            font-weight: bold;
+            color: gold;
+            opacity: 1;
+            animation: float-up 1s forwards;
+        }
+        
+        @keyframes float-up {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-50px); opacity: 0; }
+        }
+        
+        .progress-bar {
+            height: 10px;
+            border-radius: 5px;
+            transition: width 0.3s ease;
+        }
+        
+        .life-container {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .life-heart {
+            color: red;
+            font-size: 24px;
+            transition: all 0.3s ease;
+        }
+        
+        .combo-indicator {
+            position: absolute;
+            font-size: 28px;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(to right, #ff00ff, #00ffff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            opacity: 0;
+            animation: combo-pop 0.5s forwards;
+        }
+        
+        @keyframes combo-pop {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+    <div class="text-center mb-4 w-full max-w-4xl">
+        <h1 class="text-4xl md:text-5xl font-bold text-yellow-400 mb-2 title">PAPAGALLO AMAZÓNICO</h1>
+        <div class="flex justify-between items-center gap-4 bg-green-900 bg-opacity-70 rounded-lg p-3">
+            <div class="flex flex-col items-center">
+                <span class="font-bold text-white">Puntos:</span> 
+                <span id="score" class="text-2xl text-yellow-300 font-bold">0</span>
+            </div>
+            
+            <div class="flex flex-col items-center">
+                <span class="font-bold text-white">Combo:</span>
+                <div class="flex items-center gap-1">
+                    <span id="combo" class="text-2xl text-purple-300 font-bold">1x</span>
+                    <i class="fas fa-bolt text-yellow-400"></i>
+                </div>
+                <div class="w-24 h-2 bg-gray-700 rounded-full">
+                    <div id="comboBar" class="progress-bar bg-gradient-to-r from-purple-500 to-pink-500" style="width: 100%"></div>
+                </div>
+            </div>
+            
+            <div class="flex flex-col items-center">
+                <span class="font-bold text-white">Vidas:</span>
+                <div id="lifeContainer" class="life-container">
+                    <i class="fas fa-heart life-heart"></i>
+                    <i class="fas fa-heart life-heart"></i>
+                    <i class="fas fa-heart life-heart"></i>
+                </div>
+            </div>
+            
+            <div class="flex flex-col items-center">
+                <span class="font-bold text-white">Escudo:</span>
+                <div class="w-24 h-2 bg-gray-700 rounded-full">
+                    <div id="shieldBar" class="progress-bar bg-blue-500" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="relative w-full max-w-4xl">
+        <canvas id="gameCanvas" width="800" height="500"></canvas>
+        
+        <div id="gameOverScreen" class="absolute inset-0 flex flex-col items-center justify-center hidden">
+            <div class="bg-gradient-to-br from-yellow-600 to-orange-700 p-8 rounded-lg text-center max-w-md border-4 border-yellow-400 shadow-xl">
+                <h2 class="text-3xl font-bold text-white mb-4">¡Juego Terminado!</h2>
+                <div class="stats mb-6">
+                    <div class="mb-2">
+                        <p class="text-xl text-white">Puntaje final:</p>
+                        <p id="finalScore" class="text-4xl font-bold text-yellow-300">0</p>
+                    </div>
+                    <div class="mb-2">
+                        <p class="text-xl text-white">Combo máximo:</p>
+                        <p id="maxCombo" class="text-2xl font-bold text-purple-300">1x</p>
+                    </div>
+                    <div>
+                        <p class="text-xl text-white">Frutas recolectadas:</p>
+                        <p id="totalFruits" class="text-2xl font-bold text-green-300">0</p>
+                    </div>
+                </div>
+                <button id="restartButton" class="bg-gradient-to-r from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 text-white font-bold py-3 px-6 rounded-full text-lg transition transform hover:scale-105 shadow-lg">
+                    <i class="fas fa-rotate-right mr-2"></i>Jugar de nuevo
+                </button>
+            </div>
+        </div>
+        
+        <div id="startScreen" class="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-70">
+            <div class="bg-gradient-to-br from-green-800 to-green-900 p-8 rounded-lg text-center max-w-md border-4 border-yellow-600">
+                <h2 class="text-3xl font-bold text-yellow-400 mb-4 title">PAPAGALLO AMAZÓNICO</h2>
+                <p class="text-white mb-6 text-lg">¡Ayuda al papagallo a recolectar frutas en la selva amazónica! Evita los obstáculos peligrosos y no pierdas tus vidas.</p>
+                
+                <div class="instructions mb-6 text-left text-white bg-green-900 bg-opacity-50 p-3 rounded">
+                    <p class="mb-2"><i class="fas fa-apple-alt text-yellow-500 mr-2"></i> Colecta frutas para ganar puntos</p>
+                    <p class="mb-2"><i class="fas fa-bolt text-yellow-400 mr-2"></i> Combos aumentan tu puntaje</p>
+                    <p class="mb-2"><i class="fas fa-shield-alt text-blue-400 mr-2"></i> Escudos te protegen</p>
+                    <p class="mb-2"><i class="fas fa-gem text-cyan-400 mr-2"></i> Diamantes son especiales</p>
+                </div>
+                
+                <button id="startButton" class="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-green-900 font-bold py-3 px-6 rounded-full text-lg transition transform hover:scale-105 shadow-lg w-full">
+                    <i class="fas fa-play mr-2"></i>Empezar Aventura
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-6 text-white text-center max-w-md px-4">
+        <p class="mb-2 text-lg font-bold">Controles:</p>
+        <div class="flex justify-center gap-4 mb-4">
+            <div class="bg-gray-800 px-4 py-2 rounded-lg border border-gray-700 shadow"><i class="fas fa-arrow-up"></i></div>
+            <div class="bg-gray-800 px-4 py-2 rounded-lg border border-gray-700 shadow"><i class="fas fa-arrow-down"></i></div>
+            <div class="bg-gray-800 px-4 py-2 rounded-lg border border-gray-700 shadow"><i class="fas fa-arrow-left"></i></div>
+            <div class="bg-gray-800 px-4 py-2 rounded-lg border border-gray-700 shadow"><i class="fas fa-arrow-right"></i></div>
+        </div>
+        <p class="text-sm text-gray-300">¿Sabías que en la Amazonía existen más de 1,800 especies de aves?</p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const scoreElement = document.getElementById('score');
+            const comboElement = document.getElementById('combo');
+            const comboBar = document.getElementById('comboBar');
+            const lifeContainer = document.getElementById('lifeContainer');
+            const shieldBar = document.getElementById('shieldBar');
+            const gameOverScreen = document.getElementById('gameOverScreen');
+            const finalScoreElement = document.getElementById('finalScore');
+            const maxComboElement = document.getElementById('maxCombo');
+            const totalFruitsElement = document.getElementById('totalFruits');
+            const restartButton = document.getElementById('restartButton');
+            const startScreen = document.getElementById('startScreen');
+            const startButton = document.getElementById('startButton');
+            
+            // Configuración del juego
+            let score = 0;
+            let lives = 3;
+            let gameRunning = false;
+            let gameOver = false;
+            let combo = 1;
+            let comboTime = 0;
+            let maxCombo = 1;
+            let fruitsCollected = 0;
+            let shield = 0;
+            let shieldActive = false;
+            let scoreEffects = [];
+            let comboIndicators = [];
+            
+            // Parámetros del papagallo
+            const parrot = {
+                x: 100,
+                y: canvas.height / 2,
+                width: 60,
+                height: 60,
+                speed: 5,
+                color: '#FFD700',
+                isFlapping: false
+            };
+            
+            // Frutas mejoradas
+            let fruits = [];
+            const fruitTypes = [
+                { name: 'banana', color: '#FFD700', points: 10, shape: 'banana' },
+                { name: 'mango', color: '#FFA500', points: 15, shape: 'oval' },
+                { name: 'guayaba', color: '#FF6347', points: 20, shape: 'circle' },
+                { name: 'piña', color: '#F4A460', points: 25, shape: 'oval' },
+                { name: 'maracuya', color: '#E6BE8A', points: 30, shape: 'circle' },
+                { name: 'coco', color: '#964B00', points: 35, shape: 'circle' }
+            ];
+            
+            // Obstáculos mejorados
+            let obstacles = [];
+            const obstacleTypes = [
+                { name: 'tronco', width: 30, height: 80, color: '#8B4513', type: 'log' },
+                { name: 'roca', width: 50, height: 40, color: '#696969', type: 'rock' },
+                { name: 'planta carnivora', width: 60, height: 60, color: '#2E8B57', type: 'plant' },
+                { name: 'serpiente', width: 80, height: 30, color: '#228B22', type: 'snake' },
+                { name: 'araña', width: 50, height: 40, color: '#4B3621', type: 'spider' }
+            ];
+            
+            // Nubes decorativas
+            let clouds = [];
+            
+            // Power-ups
+            let powerups = [];
+            const powerupTypes = [
+                { name: 'escudo', color: '#00BFFF', type: 'shield', effect: 'shield', duration: 10000 },
+                { name: 'combo x2', color: '#BA55D3', type: 'combo', effect: 'doublePoints', duration: 15000 },
+                { name: 'vida extra', color: '#FF0000', type: 'heart', effect: 'extraLife', duration: 0 }
+            ];
+            
+            // Teclas presionadas
+            const keys = {
+                ArrowUp: false,
+                ArrowDown: false,
+                ArrowLeft: false,
+                ArrowRight: false
+            };
+            
+            // Event listeners para teclado
+            document.addEventListener('keydown', (e) => {
+                if (keys.hasOwnProperty(e.key)) {
+                    keys[e.key] = true;
+                }
+                if (e.key === ' ' && !parrot.isFlapping) {
+                    parrot.isFlapping = true;
+                    setTimeout(() => parrot.isFlapping = false, 300);
+                }
+            });
+            
+            document.addEventListener('keyup', (e) => {
+                if (keys.hasOwnProperty(e.key)) {
+                    keys[e.key] = false;
+                }
+            });
+            
+            // Botones de inicio/reinicio
+            startButton.addEventListener('click', startGame);
+            restartButton.addEventListener('click', startGame);
+            
+            function startGame() {
+                score = 0;
+                lives = 3;
+                combo = 1;
+                comboTime = 0;
+                maxCombo = 1;
+                fruitsCollected = 0;
+                shield = 0;
+                shieldActive = false;
+                gameOver = false;
+                fruits = [];
+                obstacles = [];
+                powerups = [];
+                clouds = [];
+                scoreEffects = [];
+                comboIndicators = [];
+                
+                parrot.x = 100;
+                parrot.y = canvas.height / 2;
+                
+                scoreElement.textContent = score;
+                comboElement.textContent = combo + 'x';
+                updateLivesDisplay();
+                shieldBar.style.width = '0%';
+                comboBar.style.width = '100%';
+                
+                gameOverScreen.classList.add('hidden');
+                startScreen.classList.add('hidden');
+                
+                gameRunning = true;
+                
+                // Generar nubes iniciales
+                for (let i = 0; i < 5; i++) {
+                    spawnCloud();
+                }
+                
+                // Iniciar el bucle del juego
+                requestAnimationFrame(gameLoop);
+            }
+            
+            function updateLivesDisplay() {
+                lifeContainer.innerHTML = '';
+                for (let i = 0; i < lives; i++) {
+                    const heart = document.createElement('i');
+                    heart.className = 'fas fa-heart life-heart';
+                    if (i === lives - 1 && lives === 1) {
+                        heart.classList.add('animate-pulse');
+                    }
+                    lifeContainer.appendChild(heart);
+                }
+            }
+            
+            function gameLoop(timestamp) {
+                if (!gameRunning) return;
+                
+                update(timestamp);
+                render();
+                
+                if (!gameOver) {
+                    requestAnimationFrame(gameLoop);
+                }
+            }
+            
+            function update(timestamp) {
+                // Mover el papagallo según las teclas presionadas
+                if (keys.ArrowUp && parrot.y > 0) {
+                    parrot.y -= parrot.speed;
+                }
+                if (keys.ArrowDown && parrot.y < canvas.height - parrot.height) {
+                    parrot.y += parrot.speed;
+                }
+                if (keys.ArrowLeft && parrot.x > 0) {
+                    parrot.x -= parrot.speed;
+                }
+                if (keys.ArrowRight && parrot.x < canvas.width - parrot.width) {
+                    parrot.x += parrot.speed;
+                }
+                
+                // Actualizar combo
+                if (comboTime > 0) {
+                    comboTime--;
+                    comboBar.style.width = (comboTime / 300) * 100 + '%';
+                } else if (combo > 1) {
+                    combo = 1;
+                    comboElement.textContent = combo + 'x';
+                    spawnComboIndicator(combo, false);
+                }
+                
+                // Actualizar shield
+                if (shield > 0) {
+                    shield--;
+                    shieldBar.style.width = (shield / 1000) * 100 + '%';
+                } else if (shieldActive) {
+                    shieldActive = false;
+                }
+                
+                // Mover y generar frutas
+                for (let i = fruits.length - 1; i >= 0; i--) {
+                    fruits[i].x -= fruits[i].speed;
+                    
+                    // Detectar colisión con el papagallo
+                    if (
+                        parrot.x < fruits[i].x + fruits[i].width &&
+                        parrot.x + parrot.width > fruits[i].x &&
+                        parrot.y < fruits[i].y + fruits[i].height &&
+                        parrot.y + parrot.height > fruits[i].y
+                    ) {
+                        // Sumar puntos según el tipo de fruta con combo
+                        const pointsEarned = fruits[i].points * combo;
+                        score += pointsEarned;
+                        scoreElement.textContent = score;
+                        
+                        // Mostrar efecto visual de puntos
+                        spawnScoreEffect(fruits[i].x, fruits[i].y, '+' + pointsEarned);
+                        
+                        // Incrementar combo
+                        comboTime = 300; // 5 segundos a 60fps
+                        combo++;
+                        if (combo > maxCombo) maxCombo = combo;
+                        comboElement.textContent = combo + 'x';
+                        
+                        // Mostrar indicador visual de combo
+                        if (combo % 5 === 0) {
+                            spawnComboIndicator(combo, true);
+                        }
+                        
+                        fruitsCollected++;
+                        fruits.splice(i, 1);
+                        continue;
+                    }
+                    
+                    // Eliminar frutas que salen de la pantalla
+                    if (fruits[i].x + fruits[i].width < 0) {
+                        fruits.splice(i, 1);
+                    }
+                }
+                
+                // Generar nuevas frutas aleatoriamente
+                if (Math.random() < 0.02) {
+                    spawnFruit();
+                }
+                
+                // Mover y generar obstáculos
+                for (let i = obstacles.length - 1; i >= 0; i--) {
+                    obstacles[i].x -= obstacles[i].speed;
+                    
+                    // Detectar colisión con el papagallo
+                    if (
+                        parrot.x < obstacles[i].x + obstacles[i].width &&
+                        parrot.x + parrot.width > obstacles[i].x &&
+                        parrot.y < obstacles[i].y + obstacles[i].height &&
+                        parrot.y + parrot.height > obstacles[i].y
+                    ) {
+                        if (!shieldActive) {
+                            lives--;
+                            updateLivesDisplay();
+                            
+                            // Romper combo
+                            combo = 1;
+                            comboTime = 0;
+                            comboElement.textContent = combo + 'x';
+                            comboBar.style.width = '100%';
+                            
+                            // Efecto visual de daño
+                            spawnScoreEffect(parrot.x, parrot.y, '-1 VIDA', true);
+                            
+                            if (lives <= 0) {
+                                gameOver = true;
+                                finalScoreElement.textContent = score;
+                                maxComboElement.textContent = maxCombo + 'x';
+                                totalFruitsElement.textContent = fruitsCollected;
+                                gameOverScreen.classList.remove('hidden');
+                                gameRunning = false;
+                            }
+                        }
+                        obstacles.splice(i, 1);
+                        continue;
+                    }
+                    
+                    // Eliminar obstáculos que salen de la pantalla
+                    if (obstacles[i].x + obstacles[i].width < 0) {
+                        obstacles.splice(i, 1);
+                    }
+                }
+                
+                // Generar nuevos obstáculos aleatoriamente
+                if (Math.random() < 0.01) {
+                    spawnObstacle();
+                }
+                
+                // Mover power-ups
+                for (let i = powerups.length - 1; i >= 0; i--) {
+                    powerups[i].x -= powerups[i].speed;
+                    
+                    // Detectar colisión con el papagallo
+                    if (
+                        parrot.x < powerups[i].x + powerups[i].width &&
+                        parrot.x + parrot.width > powerups[i].x &&
+                        parrot.y < powerups[i].y + powerups[i].height &&
+                        parrot.y + parrot.height > powerups[i].y
+                    ) {
+                        applyPowerup(powerups[i]);
+                        powerups.splice(i, 1);
+                        continue;
+                    }
+                    
+                    // Eliminar power-ups que salen de la pantalla
+                    if (powerups[i].x + powerups[i].width < 0) {
+                        powerups.splice(i, 1);
+                    }
+                }
+                
+                // Generar nuevos power-ups aleatoriamente
+                if (Math.random() < 0.005) {
+                    spawnPowerup();
+                }
+                
+                // Mover nubes
+                for (let i = clouds.length - 1; i >= 0; i--) {
+                    clouds[i].x -= clouds[i].speed;
+                    
+                    // Eliminar nubes que salen de la pantalla
+                    if (clouds[i].x + clouds[i].width < 0) {
+                        clouds.splice(i, 1);
+                    }
+                }
+                
+                // Generar nuevas nubes aleatoriamente
+                if (Math.random() < 0.005) {
+                    spawnCloud();
+                }
+                
+                // Actualizar efectos de puntuación
+                for (let i = scoreEffects.length - 1; i >= 0; i--) {
+                    scoreEffects[i].life--;
+                    if (scoreEffects[i].life <= 0) {
+                        scoreEffects.splice(i, 1);
+                    }
+                }
+                
+                // Actualizar efectos de combo
+                for (let i = comboIndicators.length - 1; i >= 0; i--) {
+                    comboIndicators[i].life--;
+                    if (comboIndicators[i].life <= 0) {
+                        comboIndicators.splice(i, 1);
+                    }
+                }
+            }
+            
+            function applyPowerup(powerup) {
+                switch(powerup.effect) {
+                    case 'shield':
+                        shield = 1000; // 10 segundos a 60fps
+                        shieldActive = true;
+                        shieldBar.style.width = '100%';
+                        spawnScoreEffect(powerup.x, powerup.y, 'ESCUDO ACTIVO!', false, '#00BFFF');
+                        break;
+                    case 'doublePoints':
+                        comboTime = 300; // 5 segundos a 60fps
+                        combo *= 2;
+                        if (combo > maxCombo) maxCombo = combo;
+                        comboElement.textContent = combo + 'x';
+                        comboBar.style.width = '100%';
+                        spawnScoreEffect(powerup.x, powerup.y, 'DOBLE PUNTOS!', false, '#BA55D3');
+                        spawnComboIndicator(combo, true);
+                        break;
+                    case 'extraLife':
+                        lives = Math.min(lives + 1, 5);
+                        updateLivesDisplay();
+                        spawnScoreEffect(powerup.x, powerup.y, '+1 VIDA', false, '#FF0000');
+                        break;
+                }
+            }
+            
+            function spawnScoreEffect(x, y, text, isNegative = false, color = null) {
+                scoreEffects.push({
+                    x: x,
+                    y: y,
+                    text: text,
+                    color: color || (isNegative ? '#FF0000' : '#FFD700'),
+                    life: 60 // 1 segundo a 60fps
+                });
+            }
+            
+            function spawnComboIndicator(comboLevel, isPositive) {
+                const x = canvas.width / 2;
+                const y = canvas.height / 2 - 50;
+                
+                if (isPositive) {
+                    comboIndicators.push({
+                        x: x,
+                        y: y,
+                        text: comboLevel + 'X COMBO!' + (comboLevel >= 10 ? ' ¡INCREÍBLE!' : ''),
+                        life: 60
+                    });
+                } else {
+                    comboIndicators.push({
+                        x: x,
+                        y: y,
+                        text: 'COMBO PERDIDO',
+                        color: '#FF5555',
+                        life: 60
+                    });
+                }
+            }
+            
+            function render() {
+                // Limpiar el canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Dibujar fondo (cielo y selva)
+                drawBackground();
+                
+                // Dibujar nubes
+                clouds.forEach(cloud => {
+                    ctx.fillStyle = cloud.color;
+                    ctx.beginPath();
+                    // Crear forma de nube irregular
+                    ctx.arc(cloud.x, cloud.y, cloud.width / 2, 0, Math.PI * 2);
+                    ctx.arc(cloud.x + cloud.width / 3, cloud.y - cloud.width / 4, cloud.width / 2.5, 0, Math.PI * 2);
+                    ctx.arc(cloud.x + cloud.width / 1.5, cloud.y, cloud.width / 3, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                
+                // Dibujar power-ups
+                powerups.forEach(powerup => {
+                    ctx.save();
+                    
+                    // Brillo
+                    const gradient = ctx.createRadialGradient(
+                        powerup.x + powerup.width/2, 
+                        powerup.y + powerup.height/2, 
+                        0, 
+                        powerup.x + powerup.width/2, 
+                        powerup.y + powerup.height/2, 
+                        powerup.width/2
+                    );
+                    gradient.addColorStop(0, 'rgba(255,255,255,0.8)');
+                    gradient.addColorStop(0.7, powerup.color);
+                    gradient.addColorStop(1, 'rgba(0,0,0,0)');
+                    
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(
+                        powerup.x + powerup.width/2, 
+                        powerup.y + powerup.height/2, 
+                        powerup.width/2, 
+                        0, 
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                    
+                    // Ícono según tipo
+                    ctx.fillStyle = '#FFF';
+                    ctx.font = `${powerup.width/2}px FontAwesome`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    
+                    let icon;
+                    switch(powerup.type) {
+                        case 'shield': icon = ''; break;
+                        case 'combo': icon = ''; break;
+                        case 'heart': icon = ''; break;
+                        default: icon = '';
+                    }
+                    
+                    ctx.fillText(icon, powerup.x + powerup.width/2, powerup.y + powerup.height/2 + 2);
+                    ctx.restore();
+                });
+                
+                // Dibujar frutas con mejor detalle
+                fruits.forEach(fruit => {
+                    ctx.save();
+                    
+                    // Cuerpo de la fruta
+                    ctx.fillStyle = fruit.color;
+                    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                    ctx.shadowBlur = 5;
+                    ctx.shadowOffsetX = 2;
+                    ctx.shadowOffsetY = 2;
+                    
+                    switch(fruit.shape) {
+                        case 'banana':
+                            // Banana curvada
+                            ctx.beginPath();
+                            ctx.moveTo(fruit.x, fruit.y + fruit.height/2);
+                            ctx.bezierCurveTo(
+                                fruit.x + fruit.width/3, fruit.y,
+                                fruit.x + fruit.width*2/3, fruit.y,
+                                fruit.x + fruit.width, fruit.y + fruit.height/3
+                            );
+                            ctx.bezierCurveTo(
+                                fruit.x + fruit.width*2/3, fruit.y + fruit.height,
+                                fruit.x + fruit.width/3, fruit.y + fruit.height,
+                                fruit.x, fruit.y + fruit.height/2
+                            );
+                            ctx.fill();
+                            
+                            // Detalles de la banana
+                            ctx.strokeStyle = '#8B4513';
+                            ctx.lineWidth = 2;
+                            for (let i = 1; i <= 3; i++) {
+                                ctx.beginPath();
+                                ctx.moveTo(
+                                    fruit.x + fruit.width/4 * i, 
+                                    fruit.y + fruit.height/2
+                                );
+                                ctx.quadraticCurveTo(
+                                    fruit.x + fruit.width/4 * i + 5, 
+                                    fruit.y + fruit.height/3, 
+                                    fruit.x + fruit.width/4 * i, 
+                                    fruit.y + fruit.height/3
+                                );
+                                ctx.stroke();
+                            }
+                            break;
+                        case 'oval':
+                            // Forma ovalada (mango, piña)
+                            ctx.beginPath();
+                            ctx.ellipse(
+                                fruit.x + fruit.width/2, fruit.y + fruit.height/2,
+                                fruit.width/2, fruit.height/2, Math.PI/4, 0, Math.PI * 2
+                            );
+                            ctx.fill();
+                            
+                            // Tallo
+                            ctx.fillStyle = '#8B4513';
+                            ctx.beginPath();
+                            ctx.moveTo(fruit.x + fruit.width/3, fruit.y);
+                            ctx.quadraticCurveTo(
+                                fruit.x + fruit.width/3 - 5, fruit.y - fruit.height/4,
+                                fruit.x + fruit.width/2, fruit.y - fruit.height/4
+                            );
+                            ctx.quadraticCurveTo(
+                                fruit.x + fruit.width*2/3 + 5, fruit.y - fruit.height/4,
+                                fruit.x + fruit.width*2/3, fruit.y + fruit.height/6
+                            );
+                            ctx.fill();
+                            break;
+                        case 'circle':
+                            // Forma circular (guayaba, coco, maracuya)
+                            ctx.beginPath();
+                            ctx.arc(
+                                fruit.x + fruit.width/2, fruit.y + fruit.height/2,
+                                fruit.width/2, 0, Math.PI * 2
+                            );
+                            ctx.fill();
+                            
+                            // Detalles según tipo
+                            if (fruit.type === 'maracuya') {
+                                // Semillas de maracuyá
+                                for (let i = 0; i < 12; i++) {
+                                    const angle = (i * Math.PI / 6);
+                                    const seedX = fruit.x + fruit.width/2 + Math.cos(angle) * fruit.width/3;
+                                    const seedY = fruit.y + fruit.height/2 + Math.sin(angle) * fruit.height/3;
+                                    
+                                    ctx.fillStyle = '#8B0000';
+                                    ctx.beginPath();
+                                    ctx.arc(seedX, seedY, 2, 0, Math.PI * 2);
+                                    ctx.fill();
+                                }
+                            } else if (fruit.type === 'coco') {
+                                // Ojos de coco
+                                ctx.fillStyle = '#FFF';
+                                ctx.beginPath();
+                                ctx.arc(
+                                    fruit.x + fruit.width/3, 
+                                    fruit.y + fruit.height/3, 
+                                    3, 
+                                    0, 
+                                    Math.PI * 2
+                                );
+                                ctx.arc(
+                                    fruit.x + fruit.width*2/3, 
+                                    fruit.y + fruit.height/3, 
+                                    3, 
+                                    0, 
+                                    Math.PI * 2
+                                );
+                                ctx.fill();
+                                
+                                // Boca de coco
+                                ctx.beginPath();
+                                ctx.arc(
+                                    fruit.x + fruit.width/2, 
+                                    fruit.y + fruit.height/1.5, 
+                                    fruit.width/6, 
+                                    0, 
+                                    Math.PI
+                                );
+                                ctx.strokeStyle = '#FFF';
+                                ctx.lineWidth = 2;
+                                ctx.stroke();
+                            } else {
+                                // Hojas pequeñas en guayaba
+                                ctx.fillStyle = '#8B4513';
+                                ctx.beginPath();
+                                ctx.arc(
+                                    fruit.x + fruit.width/3, 
+                                    fruit.y + fruit.width/6, 
+                                    2, 
+                                    0, 
+                                    Math.PI * 2
+                                );
+                                ctx.arc(
+                                    fruit.x + fruit.width*2/3, 
+                                    fruit.y + fruit.width/6, 
+                                    2, 
+                                    0, 
+                                    Math.PI * 2
+                                );
+                                ctx.fill();
+                            }
+                            break;
+                    }
+                    ctx.restore();
+                });
+                
+                // Dibujar obstáculos con más detalle
+                obstacles.forEach(obstacle => {
+                    ctx.save();
+                    ctx.fillStyle = obstacle.color;
+                    ctx.shadowColor = 'rgba(0,0,0,0.4)';
+                    ctx.shadowBlur = 5;
+                    ctx.shadowOffsetX = 2;
+                    ctx.shadowOffsetY = 2;
+                    
+                    switch(obstacle.type) {
+                        case 'log':
+                            // Tronco con textura
+                            ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                            
+                            // Anillos del tronco
+                            ctx.strokeStyle = '#A0522D';
+                            ctx.lineWidth = 2;
+                            for (let i = 1; i <= 5; i++) {
+                                ctx.beginPath();
+                                ctx.arc(
+                                    obstacle.x + obstacle.width/2, 
+                                    obstacle.y + obstacle.height/6 * i, 
+                                    obstacle.width/3, 
+                                    0, 
+                                    Math.PI * 2
+                                );
+                                ctx.stroke();
+                            }
+                            
+                            // Ramas
+                            if (Math.random() > 0.5) {
+                                ctx.fillStyle = '#8B4513';
+                                ctx.beginPath();
+                                ctx.moveTo(obstacle.x + obstacle.width/3, obstacle.y);
+                                ctx.lineTo(obstacle.x + obstacle.width/6, obstacle.y - obstacle.height/3);
+                                ctx.lineTo(obstacle.x, obstacle.y - obstacle.height/6);
+                                ctx.fill();
+                            }
+                            break;
+                        case 'rock':
+                            // Roca con textura
+                            ctx.beginPath();
+                            ctx.moveTo(obstacle.x, obstacle.y + obstacle.height*2/3);
+                            ctx.bezierCurveTo(
+                                obstacle.x, obstacle.y,
+                                obstacle.x + obstacle.width/3, obstacle.y - obstacle.height/10,
+                                obstacle.x + obstacle.width/2, obstacle.y + obstacle.height/10
+                            );
+                            ctx.bezierCurveTo(
+                                obstacle.x + obstacle.width*2/3, obstacle.y,
+                                obstacle.x + obstacle.width, obstacle.y + obstacle.height/3,
+                                obstacle.x + obstacle.width, obstacle.y + obstacle.height
+                            );
+                            ctx.closePath();
+                            ctx.fill();
+                            
+                            // Detalles de la roca
+                            ctx.strokeStyle = '#505050';
+                            ctx.lineWidth = 1;
+                            for (let i = 0; i < 3; i++) {
+                                ctx.beginPath();
+                                ctx.moveTo(
+                                    obstacle.x + obstacle.width/4 * (i + 1), 
+                                    obstacle.y + obstacle.height/2
+                                );
+                                ctx.quadraticCurveTo(
+                                    obstacle.x + obstacle.width/4 * (i + 1) - 5, 
+                                    obstacle.y + obstacle.height/3, 
+                                    obstacle.x + obstacle.width/4 * (i + 1), 
+                                    obstacle.y + obstacle.height/5
+                                );
+                                ctx.stroke();
+                            }
+                            break;
+                        case 'plant':
+                            // Planta carnívora con dientes
+                            // Base de la planta
+                            ctx.beginPath();
+                            ctx.ellipse(
+                                obstacle.x + obstacle.width/2, 
+                                obstacle.y + obstacle.height*2/3,
+                                obstacle.width/2, 
+                                obstacle.height/3, 
+                                0, 
+                                0, 
+                                Math.PI * 2
+                            );
+                            ctx.fill();
+                            
+                            // Boca abierta
+                            ctx.fillStyle = '#000';
+                            ctx.beginPath();
+                            ctx.ellipse(
+                                obstacle.x + obstacle.width/2, 
+                                obstacle.y + obstacle.height/2,
+                                obstacle.width/3, 
+                                obstacle.height/4, 
+                                0, 
+                                0, 
+                                Math.PI
+                            );
+                            ctx.fill();
+                            
+                            // Dientes afilados
+                            ctx.fillStyle = '#FFF';
+                            for (let i = 0; i < 6; i++) {
+                                ctx.beginPath();
+                                ctx.moveTo(
+                                    obstacle.x + obstacle.width/5 + (i * obstacle.width/6), 
+                                    obstacle.y + obstacle.height/2
+                                );
+                                ctx.lineTo(
+                                    obstacle.x + obstacle.width/5 + (i * obstacle.width/6) + obstacle.width/12, 
+                                    obstacle.y + obstacle.height/2 - obstacle.height/5
+                                );
+                                ctx.lineTo(
+                                    obstacle.x + obstacle.width/5 + (i * obstacle.width/6) + obstacle.width/6, 
+                                    obstacle.y + obstacle.height/2
+                                );
+                                ctx.fill();
+                            }
+                            
+                            // Ojos malvados
+                            ctx.fillStyle = '#F00';
+                            ctx.beginPath();
+                            ctx.arc(
+                                obstacle.x + obstacle.width/3, 
+                                obstacle.y + obstacle.height/3, 
+                                obstacle.width/10, 
+                                0, 
+                                Math.PI * 2
+                            );
+                            ctx.arc(
+                                obstacle.x + obstacle.width*2/3, 
+                                obstacle.y + obstacle.height/3, 
+                                obstacle.width/10, 
+                                0, 
+                                Math.PI * 2
+                            );
+                            ctx.fill();
+                            break;
+                        case 'snake':
+                            // Serpiente ondeante
+                            ctx.beginPath();
+                            ctx.moveTo(obstacle.x, obstacle.y + obstacle.height/2);
+                            
+                            for (let i = 0; i < 3; i++) {
+                                const cp1x = obstacle.x + obstacle.width/4 + (i * obstacle.width/3);
+                                const cp1y = obstacle.y + (i % 2 === 0 ? 0 : obstacle.height/2);
+                                const cp2x = obstacle.x + obstacle.width/2 + (i * obstacle.width/3);
+                                const cp2y = obstacle.y + (i % 2 === 0 ? obstacle.height/2 : 0);
+                                const endx = obstacle.x + obstacle.width/3 + (i * obstacle.width/3);
+                                const endy = obstacle.y + obstacle.height/2;
+                                
+                                ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endx, endy);
+                            }
+                            
+                            ctx.lineTo(obstacle.x + obstacle.width, obstacle.y + obstacle.height/3);
+                            ctx.lineTo(obstacle.x + obstacle.width - 5, obstacle.y + obstacle.height/2);
+                            ctx.lineTo(obstacle.x + obstacle.width, obstacle.y + obstacle.height*2/3);
+                            
+                            for (let i = 2; i >= 0; i--) {
+                                const cp1x = obstacle.x + obstacle.width/2 + (i * obstacle.width/3);
+                                const cp1y = obstacle.y + obstacle.height;
+                                const cp2x = obstacle.x + obstacle.width/4 + (i * obstacle.width/3);
+                                const cp2y = obstacle.y + obstacle.height/2;
+                                const endx = obstacle.x + obstacle.width/3 + (i * obstacle.width/3);
+                                const endy = obstacle.y + obstacle.height/2;
+                                
+                                ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endx, endy);
+                            }
+                            
+                            ctx.closePath();
+                            ctx.fill();
+                            
+                            // Ojos
+                            ctx.fillStyle = '#FFF';
+                            ctx.beginPath();
+                            ctx.arc(
+                                obstacle.x + obstacle.width - 10, 
+                                obstacle.y + obstacle.height/3, 
+                                3, 
+                                0, 
+                                Math.PI * 2
+                            );
+                            ctx.arc(
+                                obstacle.x + obstacle.width - 10, 
+                                obstacle.y + obstacle.height*2/3, 
+                                3, 
+                                0, 
+                                Math.PI * 2
+                            );
+                            ctx.fill();
+                            
+                            ctx.fillStyle = '#000';
+                            ctx.beginPath();
+                            ctx.arc(
+                                obstacle.x + obstacle.width - 8, 
+                                obstacle.y + obstacle.height/3, 
+                                2, 
+                                0, 
+                                Math.PI * 2
+                            );
+                            ctx.arc(
+                                obstacle.x + obstacle.width - 8, 
+                                obstacle.y + obstacle.height*2/3, 
+                                2, 
+                                0, 
+                                Math.PI * 2
+                            );
+                            ctx.fill();
+                            break;
+                        case 'spider':
+                            // Cuerpo de araña
+                            ctx.beginPath();
+                            ctx.ellipse(
+                                obstacle.x + obstacle.width/2, 
+                                obstacle.y + obstacle.height/2,
+                                obstacle.width/3, 
+                                obstacle.height/3, 
+                                0, 
+                                0, 
+                                Math.PI * 2
+                            );
+                            ctx.fill();
+                            
+                            // Ojos
+                            ctx.fillStyle = '#FFF';
+                            for (let i = 0; i < 3; i++) {
+                                ctx.beginPath();
+                                ctx.arc(
+                                    obstacle.x + obstacle.width/2 - 5 + (i * 5), 
+                                    obstacle.y + obstacle.height/3, 
+                                    2, 
+                                    0, 
+                                    Math.PI * 2
+                                );
+                                ctx.fill();
+                            }
+                            
+                            // Patas
+                            ctx.strokeStyle = obstacle.color;
+                            ctx.lineWidth = 3;
+                            for (let i = 0; i < 4; i++) {
+                                const angle1 = Math.PI/4 + (i * Math.PI/2);
+                                const angle2 = Math.PI/8 + (i * Math.PI/2);
+                                
+                                ctx.beginPath();
+                                ctx.moveTo(
+                                    obstacle.x + obstacle.width/2, 
+                                    obstacle.y + obstacle.height/2
+                                );
+                                ctx.lineTo(
+                                    obstacle.x + obstacle.width/2 + Math.cos(angle1) * obstacle.width/3, 
+                                    obstacle.y + obstacle.height/2 + Math.sin(angle1) * obstacle.height/3
+                                );
+                                ctx.lineTo(
+                                    obstacle.x + obstacle.width/2 + Math.cos(angle1) * obstacle.width/2, 
+                                    obstacle.y + obstacle.height/2 + Math.sin(angle1) * obstacle.height/2
+                                );
+                                
+                                ctx.moveTo(
+                                    obstacle.x + obstacle.width/2, 
+                                    obstacle.y + obstacle.height/2
+                                );
+                                ctx.lineTo(
+                                    obstacle.x + obstacle.width/2 + Math.cos(angle2) * obstacle.width/3, 
+                                    obstacle.y + obstacle.height/2 + Math.sin(angle2) * obstacle.height/3
+                                );
+                                ctx.lineTo(
+                                    obstacle.x + obstacle.width/2 + Math.cos(angle2) * obstacle.width/2, 
+                                    obstacle.y + obstacle.height/2 + Math.sin(angle2) * obstacle.height/2
+                                );
+                                
+                                ctx.stroke();
+                            }
+                            break;
+                    }
+                    ctx.restore();
+                });
+                
+                // Dibujar el papagallo con más detalle y animación
+                ctx.save();
+                
+                // Efecto de escudo si está activo
+                if (shieldActive) {
+                    ctx.strokeStyle = '#00BFFF';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(
+                        parrot.x + parrot.width/2, 
+                        parrot.y + parrot.height/2,
+                        parrot.width/2 + 10, 
+                        0, 
+                        Math.PI * 2
+                    );
+                    ctx.stroke();
+                    
+                    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+                    ctx.beginPath();
+                    ctx.arc(
+                        parrot.x + parrot.width/2, 
+                        parrot.y + parrot.height/2,
+                        parrot.width/2 + 15, 
+                        0, 
+                        Math.PI * 2
+                    );
+                    ctx.stroke();
+                }
+                
+                // Transformación para animación de aleteo
+                if (parrot.isFlapping) {
+                    ctx.translate(parrot.x + parrot.width/2, parrot.y + parrot.height/2);
+                    ctx.rotate(Math.sin(Date.now() / 100) * 0.2);
+                    ctx.translate(-(parrot.x + parrot.width/2), -(parrot.y + parrot.height/2));
+                }
+                
+                // Cola
+                ctx.fillStyle = '#FF8C00';
+                ctx.beginPath();
+                ctx.moveTo(parrot.x, parrot.y + parrot.height/2);
+                ctx.quadraticCurveTo(
+                    parrot.x - parrot.width/3, 
+                    parrot.y + parrot.height/4, 
+                    parrot.x - parrot.width/3, 
+                    parrot.y + parrot.height/3
+                );
+                ctx.quadraticCurveTo(
+                    parrot.x - parrot.width/3, 
+                    parrot.y + parrot.height*2/3, 
+                    parrot.x, 
+                    parrot.y + parrot.height/2
+                );
+                ctx.fill();
+                
+                // Cuerpo
+                ctx.fillStyle = parrot.color;
+                ctx.beginPath();
+                ctx.ellipse(
+                    parrot.x + parrot.width/2, 
+                    parrot.y + parrot.height/2,
+                    parrot.width/2, 
+                    parrot.height/2, 
+                    0, 
+                    0, 
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                // Alas
+                ctx.fillStyle = '#FF8C00';
+                
+                // Ala derecha (arriba)
+                ctx.beginPath();
+                ctx.moveTo(parrot.x + parrot.width/3, parrot.y + parrot.height/3);
+                ctx.quadraticCurveTo(
+                    parrot.x, 
+                    parrot.y, 
+                    parrot.x + parrot.width/3, 
+                    parrot.y - parrot.height/6
+                );
+                ctx.quadraticCurveTo(
+                    parrot.x + parrot.width/2, 
+                    parrot.y - parrot.height/6, 
+                    parrot.x + parrot.width*2/3, 
+                    parrot.y + parrot.height/3
+                );
+                ctx.fill();
+                
+                // Ala derecha (abajo)
+                ctx.beginPath();
+                ctx.moveTo(parrot.x + parrot.width/3, parrot.y + parrot.height*2/3);
+                ctx.quadraticCurveTo(
+                    parrot.x, 
+                    parrot.y + parrot.height, 
+                    parrot.x + parrot.width/3, 
+                    parrot.y + parrot.height*7/6
+                );
+                ctx.quadraticCurveTo(
+                    parrot.x + parrot.width/2, 
+                    parrot.y + parrot.height*7/6, 
+                    parrot.x + parrot.width*2/3, 
+                    parrot.y + parrot.height*2/3
+                );
+                ctx.fill();
+                
+                // Cabeza
+                ctx.fillStyle = parrot.color;
+                ctx.beginPath();
+                ctx.arc(
+                    parrot.x + parrot.width*2/3, 
+                    parrot.y + parrot.height/3,
+                    parrot.width/4, 
+                    0, 
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                // Ojo
+                ctx.fillStyle = '#FFF';
+                ctx.beginPath();
+                ctx.arc(
+                    parrot.x + parrot.width*3/4, 
+                    parrot.y + parrot.height/4,
+                    parrot.width/10, 
+                    0, 
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.arc(
+                    parrot.x + parrot.width*3/4 + 3, 
+                    parrot.y + parrot.height/4,
+                    parrot.width/20, 
+                    0, 
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                // Pico
+                ctx.fillStyle = '#FF8C00';
+                ctx.beginPath();
+                ctx.moveTo(parrot.x + parrot.width*3/4 + 5, parrot.y + parrot.height/3 - 5);
+                ctx.lineTo(parrot.x + parrot.width, parrot.y + parrot.height/3);
+                ctx.lineTo(parrot.x + parrot.width*3/4 + 5, parrot.y + parrot.height/3 + 5);
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.strokeStyle = '#A0522D';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(parrot.x + parrot.width*3/4 + 10, parrot.y + parrot.height/3);
+                ctx.lineTo(parrot.x + parrot.width - 5, parrot.y + parrot.height/3);
+                ctx.stroke();
+                
+                // Cresta
+                ctx.fillStyle = '#F00';
+                ctx.beginPath();
+                ctx.moveTo(parrot.x + parrot.width*2/3, parrot.y + parrot.height/6);
+                ctx.lineTo(parrot.x + parrot.width*2/3 - 5, parrot.y - 5);
+                ctx.lineTo(parrot.x + parrot.width*5/6, parrot.y - 10);
+                ctx.lineTo(parrot.x + parrot.width*2/3 + 10, parrot.y - 5);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+                
+                // Dibujar efectos de puntuación
+                scoreEffects.forEach(effect => {
+                    ctx.save();
+                    ctx.font = 'bold 20px Poppins';
+                    ctx.fillStyle = effect.color;
+                    ctx.globalAlpha = effect.life / 60;
+                    ctx.fillText(
+                        effect.text, 
+                        effect.x, 
+                        effect.y - (60 - effect.life) / 2
+                    );
+                    ctx.restore();
+                });
+                
+                // Dibujar efectos de combo
+                comboIndicators.forEach(indicator => {
+                    ctx.save();
+                    ctx.font = 'bold 28px Bungee';
+                    ctx.fillStyle = indicator.color || '#FFF';
+                    ctx.textAlign = 'center';
+                    ctx.globalAlpha = indicator.life / 60;
+                    ctx.shadowColor = '#000';
+                    ctx.shadowBlur = 5;
+                    ctx.fillText(
+                        indicator.text, 
+                        indicator.x, 
+                        indicator.y
+                    );
+                    ctx.restore();
+                });
+                
+                // Dibujar mensaje de pulgar hacia arriba
+                if (score > 0 && score % 500 === 0) {
+                    ctx.save();
+                    ctx.font = 'bold 40px FontAwesome';
+                    ctx.fillStyle = 'rgba(0,255,0,0.7)';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('', canvas.width/2, 50);
+                    ctx.restore();
+                }
+            }
+            
+            function drawBackground() {
+                // Cielo gradiente
+                const skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.7);
+                skyGradient.addColorStop(0, '#87CEEB');
+                skyGradient.addColorStop(0.4, '#6FB1EB');
+                skyGradient.addColorStop(0.6, '#4990E2');
+                skyGradient.addColorStop(1, '#1E90FF');
+                ctx.fillStyle = skyGradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height * 0.7);
+                
+                // Sol
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.arc(canvas.width - 100, 100, 40, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Rayos del sol
+                for (let i = 0; i < 12; i++) {
+                    const angle = (i * Math.PI / 6);
+                    ctx.strokeStyle = 'rgba(255,215,0,0.5)';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(
+                        canvas.width - 100 + Math.cos(angle) * 40, 
+                        100 + Math.sin(angle) * 40
+                    );
+                    ctx.lineTo(
+                        canvas.width - 100 + Math.cos(angle) * 60, 
+                        100 + Math.sin(angle) * 60
+                    );
+                    ctx.stroke();
+                }
+                
+                // Selva
+                const jungleGradient = ctx.createLinearGradient(0, canvas.height * 0.7, 0, canvas.height);
+                jungleGradient.addColorStop(0, '#006400');
+                jungleGradient.addColorStop(1, '#003800');
+                ctx.fillStyle = jungleGradient;
+                ctx.fillRect(0, canvas.height * 0.7, canvas.width, canvas.height * 0.3);
+                
+                // Detalles de la selva (árboles y plantas)
+                for (let i = 0; i < 15; i++) {
+                    const x = (i * canvas.width/15) + (Math.random() * 40 - 20);
+                    const treeWidth = 30 + Math.random() * 30;
+                    const treeHeight = 80 + Math.random() * 70;
+                    
+                    // Tronco
+                    ctx.fillStyle = '#8B4513';
+                    ctx.fillRect(
+                        x - treeWidth/6, 
+                        canvas.height * 0.7 - treeHeight, 
+                        treeWidth/3, 
+                        treeHeight
+                    );
+                    
+                    // Copa del árbol en capas
+                    for (let j = 0; j < 3; j++) {
+                        ctx.fillStyle = j === 0 ? '#228B22' : (j === 1 ? '#32CD32' : '#90EE90');
+                        ctx.beginPath();
+                        ctx.arc(
+                            x + (j * 10 - 10), 
+                            canvas.height * 0.7 - treeHeight - (j * 10), 
+                            treeWidth/2 - (j * 5), 
+                            0, 
+                            Math.PI * 2
+                        );
+                        ctx.fill();
+                    }
+                    
+                    // Plantas pequeñas
+                    ctx.fillStyle = '#2E8B57';
+                    ctx.beginPath();
+                    ctx.ellipse(
+                        x + treeWidth/3, 
+                        canvas.height * 0.7,
+                        treeWidth/4, 
+                        treeHeight/6, 
+                        0, 
+                        0, 
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                }
+                
+                // Río en el fondo
+                ctx.fillStyle = 'rgba(0,191,255,0.3)';
+                ctx.beginPath();
+                ctx.moveTo(0, canvas.height * 0.8);
+                ctx.quadraticCurveTo(
+                    canvas.width * 0.3, 
+                    canvas.height * 0.7, 
+                    canvas.width * 0.5, 
+                    canvas.height * 0.85
+                );
+                ctx.quadraticCurveTo(
+                    canvas.width * 0.7, 
+                    canvas.height * 0.9, 
+                    canvas.width, 
+                    canvas.height * 0.8
+                );
+                ctx.lineTo(canvas.width, canvas.height);
+                ctx.lineTo(0, canvas.height);
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            function spawnFruit() {
+                const type = fruitTypes[Math.floor(Math.random() * fruitTypes.length)];
+                
+                fruits.push({
+                    x: canvas.width,
+                    y: Math.random() * (canvas.height * 0.7 - 50) + 20,
+                    width: 30,
+                    height: 30,
+                    speed: 3 + Math.random() * 2,
+                    color: type.color,
+                    type: type.name,
+                    shape: type.shape,
+                    points: type.points
+                });
+            }
+            
+            function spawnObstacle() {
+                const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+                
+                obstacles.push({
+                    x: canvas.width,
+                    y: canvas.height * 0.7 - type.height + (Math.random() * 20 - 10),
+                    width: type.width,
+                    height: type.height,
+                    speed: 2 + Math.random() * 2,
+                    color: type.color,
+                    type: type.type
+                });
+            }
+            
+            function spawnPowerup() {
+                const type = powerupTypes[Math.floor(Math.random() * powerupTypes.length)];
+                
+                powerups.push({
+                    x: canvas.width,
+                    y: Math.random() * (canvas.height * 0.7 - 50) + 20,
+                    width: 40,
+                    height: 40,
+                    speed: 1 + Math.random(),
+                    color: type.color,
+                    type: type.type,
+                    effect: type.effect,
+                    duration: type.duration
+                });
+            }
+            
+            function spawnCloud() {
+                const size = 50 + Math.random() * 70;
+                
+                clouds.push({
+                    x: canvas.width,
+                    y: Math.random() * (canvas.height * 0.4),
+                    width: size,
+                    height: size/1.5,
+                    speed: 0.3 + Math.random() * 0.7,
+                    color: 'rgba(255, 255, 255, 0.8)'
+                });
+            }
+        });
+    </script>
+</body>
+</html>
