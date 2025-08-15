@@ -1,0 +1,901 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Jump - Dark Mode Platformer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background-color: #121212;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            color: #e0e0e0;
+        }
+        
+        h1 {
+            color: #bb86fc;
+            margin-top: 20px;
+            text-shadow: 0 0 10px rgba(187, 134, 252, 0.5);
+        }
+        
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 400px;
+            margin-top: 30px;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #1e1e1e 0%, #121212 100%);
+            border: 4px solid #bb86fc;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(187, 134, 252, 0.3);
+        }
+        
+        #game-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background-color: transparent;
+        }
+        
+        #score-display {
+            background-color: #332940;
+            padding: 10px 30px;
+            border-radius: 5px;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 20px;
+            box-shadow: 0 4px 0 #1f1b24;
+            color: #bb86fc;
+            text-align: center;
+            border: 1px solid #bb86fc;
+        }
+        
+        #controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+        }
+        
+        #controls button {
+            padding: 10px 20px;
+            background-color: #332940;
+            color: #bb86fc;
+            border: 1px solid #bb86fc;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #1f1b24;
+            transition: all 0.2s;
+        }
+        
+        #controls button:hover {
+            background-color: #3e3650;
+            transform: translateY(-2px);
+        }
+        
+        #controls button:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #1f1b24;
+        }
+        
+        .cloud {
+            position: absolute;
+            background: #424242;
+            border-radius: 50%;
+            opacity: 0.4;
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(30, 30, 30, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            color: #e0e0e0;
+        }
+        
+        #start-screen h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #bb86fc;
+            text-shadow: 0 0 15px #bb86fc;
+        }
+        
+        #start-screen p {
+            font-size: 18px;
+            margin-bottom: 30px;
+            text-align: center;
+            max-width: 80%;
+            color: #b8b8b8;
+        }
+        
+        #start-btn {
+            padding: 15px 40px;
+            background-color: #332940;
+            color: #bb86fc;
+            border: 1px solid #bb86fc;
+            border-radius: 5px;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #1f1b24;
+            transition: all 0.2s;
+        }
+        
+        #start-btn:hover {
+            background-color: #3e3650;
+            transform: translateY(-2px);
+        }
+        
+        #start-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 3px 0 #1f1b24;
+        }
+        
+        #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(30, 30, 30, 0.9);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            color: #e0e0e0;
+        }
+        
+        #game-over-screen h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #ff7597;
+            text-shadow: 0 0 10px rgba(255, 117, 151, 0.5);
+        }
+        
+        #final-score {
+            font-size: 24px;
+            margin-bottom: 30px;
+            color: #bb86fc;
+        }
+        
+        #restart-btn {
+            padding: 15px 40px;
+            background-color: #332940;
+            color: #bb86fc;
+            border: 1px solid #bb86fc;
+            border-radius: 5px;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #1f1b24;
+            transition: all 0.2s;
+        }
+        
+        #restart-btn:hover {
+            background-color: #3e3650;
+            transform: translateY(-2px);
+        }
+        
+        #restart-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 3px 0 #1f1b24;
+        }
+
+        #point-popup {
+            position: absolute;
+            color: #03dac6;
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 0 0 5px #000;
+            opacity: 0;
+            transition: all 0.5s;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        #controls {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Neon Jump</h1>
+    <div id="controls">
+        <button id="mute-btn">Toggle Sound</button>
+        <button id="help-btn">Help</button>
+    </div>
+    <div id="game-container">
+        <canvas id="game-canvas" width="800" height="400"></canvas>
+        
+        <div id="start-screen">
+            <h1>NEON JUMP</h1>
+            <p>Use arrow keys to move and space to jump. Collect glowing orbs and stomp on shadow creatures to gain points!</p>
+            <button id="start-btn">Enter The Void</button>
+        </div>
+        
+        <div id="game-over-screen">
+            <h1>GAME OVER!</h1>
+            <div id="final-score">Score: 0</div>
+            <button id="restart-btn">Try Again</button>
+        </div>
+
+        <div id="point-popup"></div>
+    </div>
+    
+    <div id="score-display">Score: 0</div>
+    
+    <script>
+        // Game variables
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score-display');
+        const startScreen = document.getElementById('start-screen');
+        const startBtn = document.getElementById('start-btn');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const restartBtn = document.getElementById('restart-btn');
+        const muteBtn = document.getElementById('mute-btn');
+        const helpBtn = document.getElementById('help-btn');
+        const pointPopup = document.getElementById('point-popup');
+        
+        let score = 0;
+        let gameRunning = false;
+        let muted = false;
+        
+        // Player variables
+        const player = {
+            x: 50,
+            y: 300,
+            width: 32,
+            height: 48,
+            speed: 5,
+            jumpForce: 12,
+            velocityY: 0,
+            gravity: 0.5,
+            isJumping: false,
+            direction: 'right',
+            sprite: {
+                right: {
+                    stand: { x: 0, y: 0, width: 32, height: 48 },
+                    walk1: { x: 32, y: 0, width: 32, height: 48 },
+                    walk2: { x: 64, y: 0, width: 32, height: 48 },
+                    jump: { x: 96, y: 0, width: 32, height: 48 }
+                },
+                left: {
+                    stand: { x: 0, y: 48, width: 32, height: 48 },
+                    walk1: { x: 32, y: 48, width: 32, height: 48 },
+                    walk2: { x: 64, y: 48, width: 32, height: 48 },
+                    jump: { x: 96, y: 48, width: 32, height: 48 }
+                }
+            },
+            frame: 0,
+            animationSpeed: 0.1,
+            currentSprite: null
+        };
+        
+        // Game elements
+        let platforms = [];
+        let coins = [];
+        let enemies = [];
+        let clouds = [];
+        let cameraOffset = 0;
+        let keys = {};
+        let backgroundImg = null;
+        let spriteSheet = null;
+        let coinImg = null;
+        let enemyImg = null;
+        let sounds = {
+            jump: null,
+            coin: null,
+            gameOver: null,
+            background: null,
+            stomp: null
+        };
+        
+        // Initialize game
+        function init() {
+            createClouds();
+            generateLevel();
+            loadAssets();
+            setupEventListeners();
+            player.currentSprite = player.sprite.right.stand;
+        }
+        
+        // Load game assets
+        function loadAssets() {
+            // Create sprite sheet (normally you'd load this from an image file)
+            spriteSheet = document.createElement('canvas');
+            spriteSheet.width = 128;
+            spriteSheet.height = 96;
+            const spriteCtx = spriteSheet.getContext('2d');
+            
+            // Draw player sprites (right-facing)
+            // Standing
+            spriteCtx.fillStyle = '#03dac6';
+            spriteCtx.fillRect(0, 0, 32, 48);
+            spriteCtx.fillStyle = '#bb86fc';
+            spriteCtx.fillRect(5, 5, 22, 15); // hat
+            spriteCtx.fillStyle = '#3700B3';
+            spriteCtx.fillRect(5, 20, 22, 3); // suspenders
+            spriteCtx.fillStyle = '#121212';
+            spriteCtx.fillRect(11, 23, 10, 25); // pants
+            
+            // Walking 1
+            spriteCtx.fillStyle = '#03dac6';
+            spriteCtx.fillRect(32, 0, 32, 48);
+            spriteCtx.fillStyle = '#bb86fc';
+            spriteCtx.fillRect(37, 5, 22, 15);
+            spriteCtx.fillStyle = '#3700B3';
+            spriteCtx.fillRect(37, 20, 22, 3);
+            spriteCtx.fillStyle = '#121212';
+            spriteCtx.beginPath();
+            spriteCtx.moveTo(43, 23);
+            spriteCtx.lineTo(32, 35);
+            spriteCtx.lineTo(45, 35);
+            spriteCtx.lineTo(45, 48);
+            spriteCtx.closePath();
+            spriteCtx.fill();
+            
+            // Walking 2
+            spriteCtx.fillStyle = '#03dac6';
+            spriteCtx.fillRect(64, 0, 32, 48);
+            spriteCtx.fillStyle = '#bb86fc';
+            spriteCtx.fillRect(69, 5, 22, 15);
+            spriteCtx.fillStyle = '#3700B3';
+            spriteCtx.fillRect(69, 20, 22, 3);
+            spriteCtx.fillStyle = '#121212';
+            spriteCtx.beginPath();
+            spriteCtx.moveTo(75, 23);
+            spriteCtx.lineTo(64, 35);
+            spriteCtx.lineTo(77, 35);
+            spriteCtx.lineTo(77, 48);
+            spriteCtx.closePath();
+            spriteCtx.fill();
+            
+            // Jumping
+            spriteCtx.fillStyle = '#03dac6';
+            spriteCtx.fillRect(96, 0, 32, 48);
+            spriteCtx.fillStyle = '#bb86fc';
+            spriteCtx.fillRect(101, 5, 22, 15);
+            spriteCtx.fillStyle = '#3700B3';
+            spriteCtx.fillRect(101, 20, 22, 3);
+            spriteCtx.fillStyle = '#121212';
+            spriteCtx.fillRect(107, 23, 10, 25);
+            
+            // Left-facing sprites (mirrored)
+            // Standing
+            spriteCtx.fillStyle = '#03dac6';
+            spriteCtx.fillRect(0, 48, 32, 48);
+            spriteCtx.fillStyle = '#bb86fc';
+            spriteCtx.fillRect(5, 53, 22, 15);
+            spriteCtx.fillStyle = '#3700B3';
+            spriteCtx.fillRect(5, 68, 22, 3);
+            spriteCtx.fillStyle = '#121212';
+            spriteCtx.fillRect(11, 71, 10, 25);
+            
+            // Walking 1
+            spriteCtx.fillStyle = '#03dac6';
+            spriteCtx.fillRect(32, 48, 32, 48);
+            spriteCtx.fillStyle = '#bb86fc';
+            spriteCtx.fillRect(37, 53, 22, 15);
+            spriteCtx.fillStyle = '#3700B3';
+            spriteCtx.fillRect(37, 68, 22, 3);
+            spriteCtx.fillStyle = '#121212';
+            spriteCtx.beginPath();
+            spriteCtx.moveTo(43, 71);
+            spriteCtx.lineTo(32, 83);
+            spriteCtx.lineTo(45, 83);
+            spriteCtx.lineTo(45, 96);
+            spriteCtx.closePath();
+            spriteCtx.fill();
+            
+            // Walking 2
+            spriteCtx.fillStyle = '#03dac6';
+            spriteCtx.fillRect(64, 48, 32, 48);
+            spriteCtx.fillStyle = '#bb86fc';
+            spriteCtx.fillRect(69, 53, 22, 15);
+            spriteCtx.fillStyle = '#3700B3';
+            spriteCtx.fillRect(69, 68, 22, 3);
+            spriteCtx.fillStyle = '#121212';
+            spriteCtx.beginPath();
+            spriteCtx.moveTo(75, 71);
+            spriteCtx.lineTo(64, 83);
+            spriteCtx.lineTo(77, 83);
+            spriteCtx.lineTo(77, 96);
+            spriteCtx.closePath();
+            spriteCtx.fill();
+            
+            // Jumping
+            spriteCtx.fillStyle = '#03dac6';
+            spriteCtx.fillRect(96, 48, 32, 48);
+            spriteCtx.fillStyle = '#bb86fc';
+            spriteCtx.fillRect(101, 53, 22, 15);
+            spriteCtx.fillStyle = '#3700B3';
+            spriteCtx.fillRect(101, 68, 22, 3);
+            spriteCtx.fillStyle = '#121212';
+            spriteCtx.fillRect(107, 71, 10, 25);
+            
+            // Coin image (glowing orb)
+            coinImg = document.createElement('canvas');
+            coinImg.width = 24;
+            coinImg.height = 24;
+            const coinCtx = coinImg.getContext('2d');
+            
+            const gradient = coinCtx.createRadialGradient(12, 12, 3, 12, 12, 12);
+            gradient.addColorStop(0, '#bb86fc');
+            gradient.addColorStop(0.8, '#3700B3');
+            
+            coinCtx.beginPath();
+            coinCtx.arc(12, 12, 12, 0, Math.PI * 2);
+            coinCtx.fillStyle = gradient;
+            coinCtx.fill();
+            
+            coinCtx.beginPath();
+            coinCtx.arc(12, 12, 12, 0, Math.PI * 2);
+            coinCtx.strokeStyle = '#03dac6';
+            coinCtx.lineWidth = 2;
+            coinCtx.stroke();
+            
+            // Draw glow effect
+            for (let i = 1; i <= 5; i++) {
+                coinCtx.beginPath();
+                coinCtx.arc(12, 12, 12 + i, 0, Math.PI * 2);
+                coinCtx.strokeStyle = `rgba(187, 134, 252, ${0.2 - (i * 0.03)})`;
+                coinCtx.lineWidth = 1;
+                coinCtx.stroke();
+            }
+            
+            // Enemy image (shadow creature)
+            enemyImg = document.createElement('canvas');
+            enemyImg.width = 40;
+            enemyImg.height = 30;
+            const enemyCtx = enemyImg.getContext('2d');
+            
+            // Base shadow shape
+            enemyCtx.fillStyle = '#303030';
+            enemyCtx.beginPath();
+            enemyCtx.moveTo(5, 15);
+            enemyCtx.lineTo(35, 15);
+            enemyCtx.quadraticCurveTo(40, 15, 40, 20);
+            enemyCtx.lineTo(40, 30);
+            enemyCtx.quadraticCurveTo(20, 30, 0, 30);
+            enemyCtx.quadraticCurveTo(0, 20, 5, 15);
+            enemyCtx.closePath();
+            enemyCtx.fill();
+            
+            // Glowing eyes
+            const eyeGradient = enemyCtx.createLinearGradient(0, 20, 0, 25);
+            eyeGradient.addColorStop(0, '#ff7597');
+            eyeGradient.addColorStop(1, '#ff0266');
+            
+            enemyCtx.fillStyle = eyeGradient;
+            enemyCtx.fillRect(15, 20, 10, 5);
+            
+            // Create simple sounds (normally you'd use audio files)
+            sounds.jump = { play: function() { if (!muted) console.log('Jump sound'); } };
+            sounds.coin = { play: function() { if (!muted) console.log('Coin sound'); } };
+            sounds.gameOver = { play: function() { if (!muted) console.log('Game over sound'); } };
+            sounds.background = { play: function() { if (!muted) console.log('Background music playing'); } };
+            sounds.stomp = { play: function() { if (!muted) console.log('Stomp sound!'); } };
+        }
+        
+        // Generate game level
+        function generateLevel() {
+            // Ground
+            platforms.push({ 
+                x: 0, 
+                y: 350, 
+                width: 800, 
+                height: 50,
+                color: '#332940'
+            });
+            
+            // Platforms
+            platforms.push({ x: 200, y: 300, width: 100, height: 15, color: '#1f1b24' });
+            platforms.push({ x: 400, y: 250, width: 100, height: 15, color: '#1f1b24' });
+            platforms.push({ x: 600, y: 200, width: 100, height: 15, color: '#1f1b24' });
+            platforms.push({ x: 800, y: 250, width: 100, height: 15, color: '#1f1b24' });
+            platforms.push({ x: 1000, y: 300, width: 100, height: 15, color: '#1f1b24' });
+            
+            // Coins (glowing orbs)
+            for (let i = 0; i < 15; i++) {
+                coins.push({
+                    x: 100 + Math.random() * 1000,
+                    y: 100 + Math.random() * 200,
+                    width: 24,
+                    height: 24,
+                    value: 10,
+                    collected: false
+                });
+            }
+            
+            // Enemies (shadow creatures)
+            enemies.push({ 
+                x: 300, 
+                y: 310, 
+                width: 40, 
+                height: 30, 
+                speed: 1, 
+                direction: 1,
+                moveDistance: 100,
+                active: true
+            });
+            
+            enemies.push({ 
+                x: 700, 
+                y: 210, 
+                width: 40, 
+                height: 30, 
+                speed: 1, 
+                direction: -1,
+                moveDistance: 80,
+                active: true
+            });
+        }
+        
+        // Create decorative clouds
+        function createClouds() {
+            for (let i = 0; i < 5; i++) {
+                clouds.push({
+                    x: Math.random() * 800,
+                    y: Math.random() * 150,
+                    width: 80 + Math.random() * 70,
+                    height: 40 + Math.random() * 30,
+                    speed: 0.2 + Math.random() * 0.5
+                });
+            }
+        }
+        
+        // Set up event listeners
+        function setupEventListeners() {
+            document.addEventListener('keydown', function(e) {
+                keys[e.key] = true;
+            });
+            
+            document.addEventListener('keyup', function(e) {
+                keys[e.key] = false;
+            });
+            
+            startBtn.addEventListener('click', function() {
+                startScreen.style.display = 'none';
+                gameRunning = true;
+                sounds.background.play();
+                requestAnimationFrame(gameLoop);
+            });
+            
+            restartBtn.addEventListener('click', function() {
+                resetGame();
+                gameOverScreen.style.display = 'none';
+                gameRunning = true;
+                sounds.background.play();
+                requestAnimationFrame(gameLoop);
+            });
+            
+            muteBtn.addEventListener('click', function() {
+                muted = !muted;
+                muteBtn.textContent = muted ? 'Unmute Sound' : 'Mute Sound';
+            });
+            
+            helpBtn.addEventListener('click', function() {
+                alert("Neon Jump\n\nControls:\nLeft/Right Arrow Keys: Move\nSpace: Jump\n\nObjective:\nCollect glowing orbs and stomp on shadow creatures to gain points. Jump on top of enemies to defeat them and earn 15 points!");
+            });
+        }
+        
+        // Reset game state
+        function resetGame() {
+            score = 0;
+            scoreDisplay.textContent = `Score: ${score}`;
+            
+            player.x = 50;
+            player.y = 300;
+            player.velocityY = 0;
+            player.isJumping = false;
+            
+            platforms = [];
+            coins = [];
+            enemies = [];
+            
+            generateLevel();
+        }
+        
+        // Show points popup with neon effect
+        function showPointsPopup(points, x, y) {
+            pointPopup.textContent = `+${points}`;
+            pointPopup.style.left = `${x}px`;
+            pointPopup.style.top = `${y}px`;
+            pointPopup.style.opacity = '1';
+            pointPopup.style.transform = 'translateY(-20px)';
+            pointPopup.style.textShadow = `0 0 10px #03dac6`;
+            
+            setTimeout(() => {
+                pointPopup.style.opacity = '0';
+                pointPopup.style.transform = 'translateY(-40px)';
+            }, 800);
+        }
+        
+        // Main game loop
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            update();
+            render();
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Update game state
+        function update() {
+            // Player movement
+            if (keys['ArrowLeft']) {
+                player.x -= player.speed;
+                player.direction = 'left';
+                player.frame += player.animationSpeed;
+            }
+            
+            if (keys['ArrowRight']) {
+                player.x += player.speed;
+                player.direction = 'right';
+                player.frame += player.animationSpeed;
+            }
+            
+            if (keys[' '] && !player.isJumping) {
+                player.velocityY = -player.jumpForce;
+                player.isJumping = true;
+                sounds.jump.play();
+            }
+            
+            // Apply gravity
+            player.velocityY += player.gravity;
+            player.y += player.velocityY;
+            
+            // Keep player in bounds horizontally
+            if (player.x < 0) player.x = 0;
+            
+            // Update camera (follow player)
+            const targetCameraOffset = Math.max(0, player.x - 400);
+            cameraOffset += (targetCameraOffset - cameraOffset) * 0.1;
+            
+            // Collision detection with platforms
+            player.isJumping = true;
+            
+            for (let i = 0; i < platforms.length; i++) {
+                const platform = platforms[i];
+                
+                if (player.x + player.width > platform.x &&
+                    player.x < platform.x + platform.width &&
+                    player.y + player.height > platform.y &&
+                    player.y < platform.y + platform.height &&
+                    player.velocityY > 0) {
+                    
+                    player.y = platform.y - player.height;
+                    player.velocityY = 0;
+                    player.isJumping = false;
+                }
+            }
+            
+            // Collision detection with coins
+            for (let i = 0; i < coins.length; i++) {
+                const coin = coins[i];
+                
+                if (!coin.collected &&
+                    player.x + player.width > coin.x &&
+                    player.x < coin.x + coin.width &&
+                    player.y + player.height > coin.y &&
+                    player.y < coin.y + coin.height) {
+                    
+                    coin.collected = true;
+                    score += coin.value;
+                    scoreDisplay.textContent = `Score: ${score}`;
+                    showPointsPopup(coin.value, coin.x - cameraOffset + coin.width/2, coin.y);
+                    sounds.coin.play();
+                }
+            }
+            
+            // Update enemies
+            for (let i = 0; i < enemies.length; i++) {
+                const enemy = enemies[i];
+                
+                if (!enemy.active) continue;
+                
+                enemy.x += enemy.speed * enemy.direction;
+                
+                if (Math.abs(enemy.x - (enemy.originalX || enemy.x)) > enemy.moveDistance) {
+                    enemy.direction *= -1;
+                    enemy.originalX = enemy.x;
+                }
+                
+                // Check collision with player
+                if (player.x + player.width > enemy.x &&
+                    player.x < enemy.x + enemy.width &&
+                    player.y + player.height > enemy.y &&
+                    player.y < enemy.y + enemy.height) {
+                    
+                    // Check if player is landing on enemy (stomping)
+                    if (player.velocityY > 0 && player.y + player.height < enemy.y + enemy.height / 2) {
+                        enemy.active = false; // Mark enemy as defeated
+                        score += 15;
+                        scoreDisplay.textContent = `Score: ${score}`;
+                        showPointsPopup(15, enemy.x - cameraOffset + enemy.width/2, enemy.y - 20);
+                        player.velocityY = -player.jumpForce * 0.7; // Small bounce
+                        sounds.stomp.play();
+                    } else {
+                        // Player hit by enemy
+                        gameOver();
+                    }
+                }
+            }
+            
+            // Update clouds
+            for (let i = 0; i < clouds.length; i++) {
+                const cloud = clouds[i];
+                cloud.x -= cloud.speed;
+                
+                if (cloud.x + cloud.width < 0) {
+                    cloud.x = canvas.width;
+                    cloud.y = Math.random() * 150;
+                }
+            }
+            
+            // Check if player fell off the world
+            if (player.y > canvas.height) {
+                gameOver();
+            }
+            
+            // Update player sprite
+            updatePlayerSprite();
+        }
+        
+        // Update player sprite based on state
+        function updatePlayerSprite() {
+            const spriteSet = player.direction === 'right' ? player.sprite.right : player.sprite.left;
+            
+            if (player.isJumping) {
+                player.currentSprite = spriteSet.jump;
+            } else if (keys['ArrowLeft'] || keys['ArrowRight']) {
+                const frame = Math.floor(player.frame) % 2;
+                player.currentSprite = frame === 0 ? spriteSet.walk1 : spriteSet.walk2;
+            } else {
+                player.currentSprite = spriteSet.stand;
+            }
+        }
+        
+        // Render game with dark neon aesthetic
+        function render() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw dark background
+            ctx.fillStyle = '#121212';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw subtle starfield background
+            ctx.fillStyle = 'rgba(187, 134, 252, 0.5)';
+            for (let i = 0; i < 100; i++) {
+                if (i % 20 === Math.floor(Math.sin(Date.now() / 1000) * 10)) continue; // Skip some stars to create twinkle effect
+                ctx.fillRect(
+                    Math.floor(Math.random() * canvas.width),
+                    Math.floor(Math.random() * canvas.height / 2),
+                    1 + Math.random(),
+                    1 + Math.random()
+                );
+            }
+            
+            // Draw clouds
+            ctx.fillStyle = 'rgba(66, 66, 66, 0.4)';
+            clouds.forEach(cloud => {
+                ctx.beginPath();
+                ctx.arc(cloud.x + cloud.width * 0.2, cloud.y + cloud.height * 0.5, cloud.height * 0.5, 0, Math.PI * 2);
+                ctx.arc(cloud.x + cloud.width * 0.5, cloud.y + cloud.height * 0.3, cloud.height * 0.6, 0, Math.PI * 2);
+                ctx.arc(cloud.x + cloud.width * 0.8, cloud.y + cloud.height * 0.5, cloud.height * 0.4, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            // Draw platforms (considering camera offset)
+            platforms.forEach(platform => {
+                if (platform.x + platform.width > cameraOffset && platform.x < cameraOffset + canvas.width) {
+                    // Platform base
+                    ctx.fillStyle = platform.color || '#1f1b24';
+                    ctx.fillRect(platform.x - cameraOffset, platform.y, platform.width, platform.height);
+                    
+                    // Neon platform edge
+                    ctx.strokeStyle = '#bb86fc';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(platform.x - cameraOffset, platform.y);
+                    ctx.lineTo(platform.x - cameraOffset + platform.width, platform.y);
+                    ctx.stroke();
+                    
+                    // Glow effect
+                    const glowGradient = ctx.createLinearGradient(
+                        platform.x - cameraOffset, platform.y - 10, 
+                        platform.x - cameraOffset, platform.y
+                    );
+                    glowGradient.addColorStop(0, 'rgba(187, 134, 252, 0.2)');
+                    glowGradient.addColorStop(1, 'transparent');
+                    
+                    ctx.fillStyle = glowGradient;
+                    ctx.fillRect(platform.x - cameraOffset, platform.y - 10, platform.width, 10);
+                }
+            });
+            
+            // Draw coins
+            coins.forEach(coin => {
+                if (!coin.collected && coin.x + coin.width > cameraOffset && coin.x < cameraOffset + canvas.width) {
+                    // Draw glow effect
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'lighter';
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#bb86fc';
+                    
+                    ctx.drawImage(
+                        coinImg,
+                        0, 0, coinImg.width, coinImg.height,
+                        coin.x - cameraOffset, coin.y, coin.width, coin.height
+                    );
+                    
+                    ctx.restore();
+                }
+            });
+            
+            // Draw active enemies only
+            enemies.forEach(enemy => {
+                if (enemy.active && enemy.x + enemy.width > cameraOffset && enemy.x < cameraOffset + canvas.width) {
+                    // Enemy glow
+                    ctx.save();
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = '#ff7597';
+                    
+                    ctx.drawImage(
+                        enemyImg,
+                        0, 0, enemyImg.width, enemyImg.height,
+                        enemy.x - cameraOffset, enemy.y, enemy.width, enemy.height
+                    );
+                    
+                    ctx.restore();
+                }
+            });
+            
+            // Draw player with glow effect
+            ctx.save();
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#03dac6';
+            
+            ctx.drawImage(
+                spriteSheet,
+                player.currentSprite.x, player.currentSprite.y, player.currentSprite.width, player.currentSprite.height,
+                player.x - cameraOffset, player.y, player.width, player.height
+            );
+            
+            ctx.restore();
+        }
+        
+        // Game over function
+        function gameOver() {
+            gameRunning = false;
+            sounds.gameOver.play();
+            finalScoreDisplay.textContent = `Score: ${score}`;
+            gameOverScreen.style.display = 'flex';
+        }
+        
+        // Initialize the game when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
