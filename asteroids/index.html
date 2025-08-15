@@ -1,0 +1,861 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Star Wars: Asteroid Evasion</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Prompt:wght@300;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #000;
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+            perspective: 1000px;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(circle at center, rgba(0, 20, 80, 0.8) 0%, rgba(0, 0, 0, 1) 70%),
+                url('https://starshipsofa.com/wp-content/uploads/2013/07/starfield.jpg');
+            overflow: hidden;
+        }
+
+        .stars {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><circle cx="10" cy="10" r="1" fill="white"/><circle cx="50" cy="30" r="1" fill="white"/><circle cx="80" cy="10" r="1" fill="white"/><circle cx="130" cy="20" r="1" fill="white"/><circle cx="170" cy="5" r="1" fill="white"/><circle cx="30" cy="80" r="1" fill="white"/><circle cx="90" cy="60" r="1" fill="white"/><circle cx="150" cy="70" r="1" fill="white"/><circle cx="10" cy="120" r="1" fill="white"/><circle cx="70" cy="100" r="1" fill="white"/><circle cx="120" cy="130" r="1" fill="white"/><circle cx="180" cy="110" r="1" fill="white"/><circle cx="30" cy="170" r="1" fill="white"/><circle cx="80" cy="150" r="1" fill="white"/><circle cx="140" cy="180" r="1" fill="white"/><circle cx="190" cy="160" r="1" fill="white"/></svg>');
+            background-repeat: repeat;
+            animation: starScroll 200s linear infinite;
+        }
+
+        @keyframes starScroll {
+            from { background-position: 0 0; }
+            to { background-position: 200px 200px; }
+        }
+
+        #intro-screen, #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            background-color: rgba(0, 0, 0, 0.8);
+            text-align: center;
+        }
+
+        #game-screen {
+            display: none;
+            height: 100%;
+        }
+
+        .title {
+            font-family: 'Orbitron', sans-serif;
+            color: #ffe81f;
+            text-shadow: 0 0 10px #ff6, 0 0 20px #ff6;
+            font-size: 4rem;
+            margin-bottom: 2rem;
+            letter-spacing: 0.5rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .scroll-text {
+            position: relative;
+            height: 60%;
+            width: 60%;
+            overflow: hidden;
+            color: #ffe81f;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            line-height: 1.5;
+            text-align: justify;
+            transform: perspective(300px) rotateX(20deg);
+            text-align: center;
+        }
+
+        .scroll-content {
+            position: absolute;
+            top: 100%;
+            animation: scroll 40s linear forwards;
+        }
+
+        @keyframes scroll {
+            0% { top: 100%; }
+            100% { top: -500%; }
+        }
+
+        .btn {
+            background: linear-gradient(to right, #3a3a98, #1a1a4e);
+            color: #ffe81f;
+            border: 2px solid #ffe81f;
+            padding: 1rem 2rem;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 2rem;
+            box-shadow: 0 0 15px rgba(255, 232, 31, 0.5);
+        }
+
+        .btn:hover {
+            background: linear-gradient(to right, #4e4eb8, #2a2a6e);
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(255, 232, 31, 0.8);
+        }
+
+        #player {
+            position: absolute;
+            width: 80px;
+            height: 100px;
+            background-image: url('data:image/png;base64,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');
+            background-repeat: no-repeat;
+            z-index: 10;
+            transition: transform 0.1s;
+            left: 50%;
+            bottom: 100px;
+            transform: translateX(-50%);
+        }
+
+        .asteroid {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            background-image: url('data:image/png;base64,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');
+            background-repeat: no-repeat;
+            z-index: 5;
+        }
+
+        .powerup {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="%2300ff00"/><circle cx="50" cy="50" r="30" fill="%23ffffff"/><circle cx="50" cy="50" r="20" fill="%2300ff00"/><circle cx="50" cy="50" r="10" fill="%23ffffff"/></svg>');
+            background-repeat: no-repeat;
+            z-index: 5;
+            animation: pulse 1s infinite;
+        }
+
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 20;
+            font-family: 'Orbitron', sans-serif;
+            color: #ffe81f;
+            display: flex;
+            gap: 30px;
+        }
+
+        .hud-item {
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border: 1px solid #ffe81f;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .laser {
+            position: absolute;
+            width: 5px;
+            height: 30px;
+            background-color: red;
+            z-index: 6;
+            border-radius: 5px;
+            box-shadow: 0 0 10px red;
+        }
+
+        .explosion {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="%23ff0"/><path d="M30,30 Q50,10 70,30 Q90,50 70,70 Q50,90 30,70 Q10,50 30,30" fill="%23f00"/><path d="M40,40 Q50,30 60,40 Q70,50 60,60 Q50,70 40,60 Q30,50 40,40" fill="%23ff0"/></svg>');
+            background-repeat: no-repeat;
+            z-index: 15;
+            animation: explosion 0.5s forwards;
+        }
+
+        @keyframes explosion {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+
+        #score-display {
+            font-size: 2rem;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border: 1px solid #ffe81f;
+            border-radius: 5px;
+            font-family: 'Orbitron', sans-serif;
+            color: #ffe81f;
+        }
+
+        #audio-toggle {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #ffe81f;
+            color: #ffe81f;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+
+        .instructions {
+            color: #ffe81f;
+            font-family: 'Prompt', sans-serif;
+            margin-top: 2rem;
+            max-width: 600px;
+            padding: 0 2rem;
+        }
+
+        .instructions h2 {
+            margin-bottom: 1rem;
+            color: #00ff00;
+        }
+
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin-top: 1rem;
+        }
+
+        .control-key {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid #ffe81f;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-family: 'Orbitron', sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div class="stars"></div>
+        
+        <div id="intro-screen">
+            <h1 class="title">STAR WARS</h1>
+            <h2 class="title" style="font-size: 2rem;">ASTEROID EVASION</h2>
+            
+            <div class="scroll-text">
+                <div class="scroll-content">
+                    <p>Episode IV</p>
+                    <p>A NEW GAME</p>
+                    <br>
+                    <p>The galaxy is in turmoil as Rebel forces attempt to outrun the Imperial fleet through an asteroid field.</p>
+                    <br>
+                    <p>As a skilled pilot, your mission is to navigate the treacherous field, collecting power-ups to sustain your ship.</p>
+                    <br>
+                    <p>Beware of the asteroids that float menacingly through space - a single collision could mean the end of your journey...</p>
+                </div>
+            </div>
+            
+            <button class="btn" id="start-game">BEGIN MISSION</button>
+            
+            <div class="instructions">
+                <h2>Mission Controls:</h2>
+                <p>Use WASD or arrow keys to navigate your ship through the asteroid field.</p>
+                <p>Collect power-ups to increase your score and survive longer.</p>
+                <p>Press SPACE to fire lasers and destroy incoming asteroids.</p>
+                
+                <div class="controls">
+                    <span class="control-key"><i class="fas fa-arrow-up"></i> / W</span>
+                    <span class="control-key"><i class="fas fa-arrow-left"></i> / A</span>
+                    <span class="control-key"><i class="fas fa-arrow-down"></i> / S</span>
+                    <span class="control-key"><i class="fas fa-arrow-right"></i> / D</span>
+                    <span class="control-key"><i class="fas fa-star"></i> SPACE</span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="game-screen">
+            <div id="hud">
+                <div class="hud-item">
+                    <i class="fas fa-heart" style="color: red;"></i>
+                    <span id="lives">3</span>
+                </div>
+                <div class="hud-item">
+                    <i class="fas fa-bolt" style="color: #00ff00;"></i>
+                    <span id="energy">100%</span>
+                </div>
+            </div>
+            
+            <div id="score-display">SCORE: 0</div>
+            
+            <div id="player"></div>
+        </div>
+        
+        <div id="game-over-screen" style="display: none;">
+            <h1 class="title">GAME OVER</h1>
+            <p style="font-size: 1.5rem; margin-bottom: 1rem;">Final Score: <span id="final-score">0</span></p>
+            <button class="btn" id="restart-game">RETRY MISSION</button>
+        </div>
+        
+        <div id="audio-toggle">
+            <i class="fas fa-volume-up"></i>
+        </div>
+        
+        <audio id="theme-music" loop>
+            <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+            Your browser does not support the audio element.
+        </audio>
+        
+        <audio id="laser-sound">
+            <source src="https://www.soundjay.com/buttons/sounds/button-09.mp3" type="audio/mpeg">
+        </audio>
+        
+        <audio id="explosion-sound">
+            <source src="https://www.soundjay.com/explosion-sounds/explosion-01.mp3" type="audio/mpeg">
+        </audio>
+        
+        <audio id="powerup-sound">
+            <source src="https://www.soundjay.com/buttons/sounds/button-21.mp3" type="audio/mpeg">
+        </audio>
+    </div>
+
+    <script>
+        // Game variables
+        let gameActive = false;
+        let score = 0;
+        let lives = 3;
+        let energy = 100;
+        let playerSpeed = 5;
+        let energyDrain = 0.1;
+        let asteroids = [];
+        let powerups = [];
+        let lasers = [];
+        let gameSpeed = 1;
+        let asteroidSpawnRate = 2500;
+        let powerupSpawnRate = 8000;
+        let lastAsteroidSpawn = 0;
+        let lastPowerupSpawn = 0;
+        let keys = {};
+        let audioEnabled = true;
+        let difficultyIncreaseInterval;
+        
+        // DOM elements
+        const introScreen = document.getElementById('intro-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const startButton = document.getElementById('start-game');
+        const restartButton = document.getElementById('restart-game');
+        const player = document.getElementById('player');
+        const livesDisplay = document.getElementById('lives');
+        const energyDisplay = document.getElementById('energy');
+        const scoreDisplay = document.getElementById('score-display');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const themeMusic = document.getElementById('theme-music');
+        const laserSound = document.getElementById('laser-sound');
+        const explosionSound = document.getElementById('explosion-sound');
+        const powerupSound = document.getElementById('powerup-sound');
+        const audioToggle = document.getElementById('audio-toggle');
+        const gameContainer = document.getElementById('game-container');
+        
+        // Game constants
+        const PLAYER_WIDTH = 60;
+        const PLAYER_HEIGHT = 100;
+        const GAME_WIDTH = window.innerWidth;
+        const GAME_HEIGHT = window.innerHeight;
+        
+        // Initialize game
+        function initGame() {
+            // Reset variables
+            score = 0;
+            lives = 3;
+            energy = 100;
+            gameSpeed = 1;
+            asteroidSpawnRate = 2500;
+            
+            // Clear any existing game elements
+            asteroids.forEach(asteroid => asteroid.element.remove());
+            powerups.forEach(powerup => powerup.element.remove());
+            lasers.forEach(laser => laser.element.remove());
+            
+            asteroids = [];
+            powerups = [];
+            lasers = [];
+            
+            // Update displays
+            updateHUD();
+            
+            // Position player
+            player.style.left = '50%';
+            player.style.bottom = '100px';
+            player.style.transform = 'translateX(-50%)';
+            
+            // Show game screen
+            introScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            gameScreen.style.display = 'block';
+            
+            // Start game loop
+            gameActive = true;
+            startGameLoop();
+            
+            // Start difficulty increase
+            if (difficultyIncreaseInterval) clearInterval(difficultyIncreaseInterval);
+            difficultyIncreaseInterval = setInterval(increaseDifficulty, 10000);
+            
+            // Play theme music if audio is enabled
+            if (audioEnabled) {
+                themeMusic.currentTime = 0;
+                themeMusic.play();
+            }
+            
+            // Focus the game screen for keyboard input
+            gameScreen.focus();
+        }
+        
+        // Game loop
+        function gameLoop(timestamp) {
+            if (!gameActive) return;
+            
+            // Movement
+            movePlayer();
+            
+            // Spawn asteroids
+            if (timestamp - lastAsteroidSpawn > asteroidSpawnRate) {
+                spawnAsteroid();
+                lastAsteroidSpawn = timestamp;
+            }
+            
+            // Spawn powerups
+            if (timestamp - lastPowerupSpawn > powerupSpawnRate) {
+                spawnPowerup();
+                lastPowerupSpawn = timestamp;
+            }
+            
+            // Update asteroids
+            updateAsteroids();
+            
+            // Update powerups
+            updatePowerups();
+            
+            // Update lasers
+            updateLasers();
+            
+            // Check collisions
+            checkCollisions();
+            
+            // Drain energy
+            energy -= energyDrain;
+            if (energy <= 0) {
+                energy = 0;
+                loseLife();
+            }
+            
+            // Update HUD
+            updateHUD();
+            
+            // Continue loop
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function startGameLoop() {
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Player movement
+        function movePlayer() {
+            const playerRect = player.getBoundingClientRect();
+            const gameRect = gameContainer.getBoundingClientRect();
+            let moveX = 0;
+            let moveY = 0;
+            
+            // Horizontal movement
+            if ((keys['ArrowLeft'] || keys['a'] || keys['A']) && playerRect.left > gameRect.left) {
+                moveX = -playerSpeed;
+            }
+            if ((keys['ArrowRight'] || keys['d'] || keys['D']) && playerRect.right < gameRect.right) {
+                moveX = playerSpeed;
+            }
+            
+            // Vertical movement
+            if ((keys['ArrowUp'] || keys['w'] || keys['W']) && playerRect.top > gameRect.top) {
+                moveY = -playerSpeed;
+            }
+            if ((keys['ArrowDown'] || keys['s'] || keys['S']) && playerRect.bottom < gameRect.bottom) {
+                moveY = playerSpeed;
+            }
+            
+            // Apply movement
+            const currentLeft = parseFloat(player.style.left) || (GAME_WIDTH / 2 - PLAYER_WIDTH / 2);
+            const currentBottom = parseFloat(player.style.bottom) || 100;
+            
+            player.style.left = `${currentLeft + moveX}px`;
+            player.style.bottom = `${currentBottom + moveY}px`;
+            
+            // Tilt effect when moving
+            if (moveX !== 0) {
+                player.style.transform = `translateX(0) rotate(${moveX * 2}deg)`;
+            } else {
+                player.style.transform = 'translateX(0) rotate(0deg)';
+            }
+        }
+        
+        // Spawn asteroid
+        function spawnAsteroid() {
+            const asteroid = document.createElement('div');
+            asteroid.className = 'asteroid';
+            asteroid.style.width = `${Math.random() * 50 + 30}px`;
+            asteroid.style.height = asteroid.style.width;
+            
+            const x = Math.random() * (GAME_WIDTH - 100) + 50;
+            const speed = Math.random() * 3 + 2 * gameSpeed;
+            
+            asteroid.style.left = `${x}px`;
+            asteroid.style.top = '-100px';
+            
+            gameScreen.appendChild(asteroid);
+            
+            asteroids.push({
+                element: asteroid,
+                x: x,
+                y: -100,
+                speed: speed,
+                width: parseInt(asteroid.style.width),
+                height: parseInt(asteroid.style.height)
+            });
+        }
+        
+        // Spawn powerup
+        function spawnPowerup() {
+            const powerup = document.createElement('div');
+            powerup.className = 'powerup';
+            
+            const x = Math.random() * (GAME_WIDTH - 50) + 25;
+            const speed = Math.random() * 2 + 1 * gameSpeed;
+            
+            powerup.style.left = `${x}px`;
+            powerup.style.top = '-50px';
+            
+            gameScreen.appendChild(powerup);
+            
+            powerups.push({
+                element: powerup,
+                x: x,
+                y: -50,
+                speed: speed,
+                width: 40,
+                height: 40
+            });
+        }
+        
+        // Update asteroids
+        function updateAsteroids() {
+            const playerRect = player.getBoundingClientRect();
+            
+            for (let i = asteroids.length - 1; i >= 0; i--) {
+                const asteroid = asteroids[i];
+                asteroid.y += asteroid.speed;
+                asteroid.element.style.top = `${asteroid.y}px`;
+                
+                // Remove if out of bounds
+                if (asteroid.y > GAME_HEIGHT) {
+                    asteroid.element.remove();
+                    asteroids.splice(i, 1);
+                    score += 5;
+                }
+            }
+        }
+        
+        // Update powerups
+        function updatePowerups() {
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                const powerup = powerups[i];
+                powerup.y += powerup.speed;
+                powerup.element.style.top = `${powerup.y}px`;
+                
+                // Remove if out of bounds
+                if (powerup.y > GAME_HEIGHT) {
+                    powerup.element.remove();
+                    powerups.splice(i, 1);
+                }
+            }
+        }
+        
+        // Fire laser
+        function fireLaser() {
+            if (energy < 5) return; // Need at least 5 energy to fire
+            
+            energy -= 5;
+            
+            const laser = document.createElement('div');
+            laser.className = 'laser';
+            
+            const playerRect = player.getBoundingClientRect();
+            const x = playerRect.left + playerRect.width / 2 - 2.5;
+            const y = playerRect.top;
+            
+            laser.style.left = `${x}px`;
+            laser.style.top = `${y}px`;
+            
+            gameScreen.appendChild(laser);
+            
+            lasers.push({
+                element: laser,
+                x: x,
+                y: y,
+                speed: 10 * gameSpeed,
+                width: 5,
+                height: 30
+            });
+            
+            if (audioEnabled) {
+                laserSound.currentTime = 0;
+                laserSound.play();
+            }
+        }
+        
+        // Update lasers
+        function updateLasers() {
+            for (let i = lasers.length - 1; i >= 0; i--) {
+                const laser = lasers[i];
+                laser.y -= laser.speed;
+                laser.element.style.top = `${laser.y}px`;
+                
+                // Remove if out of bounds
+                if (laser.y + laser.height < 0) {
+                    laser.element.remove();
+                    lasers.splice(i, 1);
+                }
+            }
+        }
+        
+        // Check collisions
+        function checkCollisions() {
+            const playerRect = player.getBoundingClientRect();
+            
+            // Check laser-asteroid collisions
+            for (let i = lasers.length - 1; i >= 0; i--) {
+                const laser = lasers[i];
+                const laserRect = laser.element.getBoundingClientRect();
+                
+                for (let j = asteroids.length - 1; j >= 0; j--) {
+                    const asteroid = asteroids[j];
+                    const asteroidRect = asteroid.element.getBoundingClientRect();
+                    
+                    if (isColliding(laserRect, asteroidRect)) {
+                        // Create explosion
+                        createExplosion(asteroid.x + asteroid.width / 2, asteroid.y + asteroid.height / 2);
+                        
+                        // Remove both objects
+                        laser.element.remove();
+                        lasers.splice(i, 1);
+                        asteroid.element.remove();
+                        asteroids.splice(j, 1);
+                        
+                        // Increase score
+                        score += 20;
+                        
+                        // Play explosion sound
+                        if (audioEnabled) {
+                            explosionSound.currentTime = 0;
+                            explosionSound.play();
+                        }
+                        
+                        // Break outer loop if laser is destroyed
+                        break;
+                    }
+                }
+            }
+            
+            // Check player-asteroid collisions
+            for (let i = asteroids.length - 1; i >= 0; i--) {
+                const asteroid = asteroids[i];
+                const asteroidRect = asteroid.element.getBoundingClientRect();
+                
+                if (isColliding(playerRect, asteroidRect)) {
+                    // Create explosion
+                    createExplosion(
+                        asteroid.x + asteroid.width / 2, 
+                        asteroid.y + asteroid.height / 2
+                    );
+                    
+                    // Remove asteroid
+                    asteroid.element.remove();
+                    asteroids.splice(i, 1);
+                    
+                    // Lose life
+                    loseLife();
+                    
+                    // Play explosion sound
+                    if (audioEnabled) {
+                        explosionSound.currentTime = 0;
+                        explosionSound.play();
+                    }
+                    
+                    // Short invincibility
+                    player.style.opacity = '0.5';
+                    setTimeout(() => {
+                        player.style.opacity = '1';
+                    }, 1000);
+                }
+            }
+            
+            // Check player-powerup collisions
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                const powerup = powerups[i];
+                const powerupRect = powerup.element.getBoundingClientRect();
+                
+                if (isColliding(playerRect, powerupRect)) {
+                    // Remove powerup
+                    powerup.element.remove();
+                    powerups.splice(i, 1);
+                    
+                    // Increase energy
+                    energy = Math.min(100, energy + 20);
+                    score += 10;
+                    
+                    // Play powerup sound
+                    if (audioEnabled) {
+                        powerupSound.currentTime = 0;
+                        powerupSound.play();
+                    }
+                }
+            }
+        }
+        
+        // Collision detection
+        function isColliding(rect1, rect2) {
+            return !(
+                rect1.right < rect2.left || 
+                rect1.left > rect2.right || 
+                rect1.bottom < rect2.top || 
+                rect1.top > rect2.bottom
+            );
+        }
+        
+        // Create explosion
+        function createExplosion(x, y) {
+            const explosion = document.createElement('div');
+            explosion.className = 'explosion';
+            explosion.style.left = `${x - 40}px`;
+            explosion.style.top = `${y - 40}px`;
+            
+            gameScreen.appendChild(explosion);
+            
+            setTimeout(() => {
+                explosion.remove();
+            }, 500);
+        }
+        
+        // Lose life
+        function loseLife() {
+            lives--;
+            
+            if (lives <= 0) {
+                gameOver();
+                return;
+            }
+            
+            // Reset energy
+            energy = 100;
+        }
+        
+        // Game over
+        function gameOver() {
+            gameActive = false;
+            clearInterval(difficultyIncreaseInterval);
+            
+            // Stop theme music
+            themeMusic.pause();
+            
+            // Show game over screen
+            gameScreen.style.display = 'none';
+            gameOverScreen.style.display = 'flex';
+            finalScoreDisplay.textContent = score;
+        }
+        
+        // Update HUD
+        function updateHUD() {
+            livesDisplay.textContent = lives;
+            energyDisplay.textContent = `${Math.max(0, Math.floor(energy))}%`;
+            scoreDisplay.textContent = `SCORE: ${score}`;
+        }
+        
+        // Increase difficulty
+        function increaseDifficulty() {
+            gameSpeed += 0.1;
+            asteroidSpawnRate = Math.max(500, asteroidSpawnRate - 100);
+            
+            // Flash screen to indicate increased difficulty
+            gameScreen.style.boxShadow = 'inset 0 0 50px rgba(255, 0, 0, 0.5)';
+            setTimeout(() => {
+                gameScreen.style.boxShadow = 'none';
+            }, 500);
+        }
+        
+        // Event listeners
+        startButton.addEventListener('click', initGame);
+        restartButton.addEventListener('click', initGame);
+        
+        audioToggle.addEventListener('click', () => {
+            audioEnabled = !audioEnabled;
+            if (audioEnabled) {
+                audioToggle.innerHTML = '<i class="fas fa-volume-up"></i>';
+                if (gameActive) themeMusic.play();
+            } else {
+                audioToggle.innerHTML = '<i class="fas fa-volume-mute"></i>';
+                themeMusic.pause();
+            }
+        });
+        
+        window.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            
+            // Space to fire laser
+            if (gameActive && (e.key === ' ' || e.key === 'Spacebar')) {
+                fireLaser();
+            }
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+        
+        // Prevent space from scrolling page
+        window.addEventListener('keydown', (e) => {
+            if (e.key === ' ' && e.target === document.body) {
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>
